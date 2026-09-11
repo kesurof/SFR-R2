@@ -1,6 +1,6 @@
 services:
   sfr-r2:
-    image: ghcr.io/kesurof/sfr-r2:latest
+    image: ghcr.io/kesurof/sfr-r2-public:latest
     # Pour construire l'image localement au lieu de la tirer du registre :
     #   décommenter la ligne ci-dessous puis `docker compose up -d --build`
     # build: .

@@ -3,15 +3,10 @@
 Prérequis : l'application Discord est configurée (voir
 [`DEPLOIEMENT.md` §1](DEPLOIEMENT.md)).
 
-## 1. Déclarer le registre privé GHCR
+## 1. Image publique GHCR
 
-L'image `ghcr.io/kesurof/sfr-r2` est privée.
-
-1. Créer un **Personal Access Token (classic)** GitHub avec la portée `read:packages`.
-2. Coolify → **Keys & Tokens → Registries** (ou *Sources*) → **Add** :
-   - URL : `ghcr.io`
-   - Username : `kesurof`
-   - Password : le PAT
+L'image `ghcr.io/kesurof/sfr-r2-public` est publique. Aucun registre privé ni
+identifiant GHCR n'est nécessaire.
 
 ## 2. Créer la ressource
 
@@ -22,7 +17,7 @@ L'image `ghcr.io/kesurof/sfr-r2` est privée.
 ```yaml
 services:
   sfr-r2:
-    image: ghcr.io/kesurof/sfr-r2:latest
+    image: ghcr.io/kesurof/sfr-r2-public:latest
     restart: unless-stopped
     ports:
       - "3000"
@@ -34,7 +29,7 @@ volumes:
 
 **Option B — Docker Image**
 
-*New Resource → Docker Image* → `ghcr.io/kesurof/sfr-r2:latest`, port interne `3000`.
+*New Resource → Docker Image* → `ghcr.io/kesurof/sfr-r2-public:latest`, port interne `3000`.
 
 ## 3. Stockage persistant
 

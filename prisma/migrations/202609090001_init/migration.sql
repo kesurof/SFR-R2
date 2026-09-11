@@ -1,0 +1,15 @@
+CREATE TABLE "User" ("id" TEXT NOT NULL PRIMARY KEY, "discordId" TEXT NOT NULL, "username" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL);
+CREATE TABLE "SponsorPermission" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "grantedByDiscordId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "SponsorPermission_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "SponsorshipRequest" ("id" TEXT NOT NULL PRIMARY KEY, "sponsorId" TEXT NOT NULL, "referredId" TEXT NOT NULL, "relationship" TEXT NOT NULL, "knownSince" TEXT NOT NULL, "context" TEXT NOT NULL, "comment" TEXT, "status" TEXT NOT NULL DEFAULT 'PENDING', "decidedByDiscordId" TEXT, "decidedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "SponsorshipRequest_sponsorId_fkey" FOREIGN KEY ("sponsorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, CONSTRAINT "SponsorshipRequest_referredId_fkey" FOREIGN KEY ("referredId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE);
+CREATE TABLE "AccessKey" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "encryptedSecret" TEXT NOT NULL, "secretHash" TEXT NOT NULL, "prefix" TEXT NOT NULL, "suffix" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'ACTIVE', "revokedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "AccessKey_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE);
+CREATE TABLE "ClaimToken" ("id" TEXT NOT NULL PRIMARY KEY, "keyId" TEXT NOT NULL, "tokenHash" TEXT NOT NULL, "expiresAt" DATETIME NOT NULL, "claimedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "ClaimToken_keyId_fkey" FOREIGN KEY ("keyId") REFERENCES "AccessKey" ("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "AuditLog" ("id" TEXT NOT NULL PRIMARY KEY, "event" TEXT NOT NULL, "actorDiscordId" TEXT, "targetDiscordId" TEXT, "requestId" TEXT, "keyId" TEXT, "metadata" TEXT NOT NULL DEFAULT '{}', "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE UNIQUE INDEX "User_discordId_key" ON "User"("discordId");
+CREATE UNIQUE INDEX "SponsorPermission_userId_key" ON "SponsorPermission"("userId");
+CREATE UNIQUE INDEX "ClaimToken_tokenHash_key" ON "ClaimToken"("tokenHash");
+CREATE INDEX "SponsorshipRequest_status_idx" ON "SponsorshipRequest"("status");
+CREATE INDEX "SponsorshipRequest_referredId_idx" ON "SponsorshipRequest"("referredId");
+CREATE INDEX "AccessKey_userId_status_idx" ON "AccessKey"("userId", "status");
+CREATE INDEX "ClaimToken_expiresAt_claimedAt_idx" ON "ClaimToken"("expiresAt", "claimedAt");
+CREATE INDEX "AuditLog_event_idx" ON "AuditLog"("event");
+CREATE UNIQUE INDEX "one_pending_request_per_referred" ON "SponsorshipRequest"("referredId") WHERE "status" = 'PENDING';

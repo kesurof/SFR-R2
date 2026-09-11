@@ -1,0 +1,9 @@
+CREATE TABLE "SyncState" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "status" TEXT NOT NULL DEFAULT 'IDLE',
+  "startedAt" DATETIME,
+  "completedAt" DATETIME,
+  "memberCount" INTEGER NOT NULL DEFAULT 0,
+  "errorMessage" TEXT,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

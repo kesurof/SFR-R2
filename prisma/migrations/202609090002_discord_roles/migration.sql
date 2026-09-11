@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "discordRoles" TEXT NOT NULL DEFAULT '[]';

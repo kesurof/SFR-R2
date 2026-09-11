@@ -1,0 +1,3 @@
+CREATE TABLE "DiscordNotification" ("id" TEXT NOT NULL PRIMARY KEY, "type" TEXT NOT NULL, "recipientDiscordId" TEXT NOT NULL, "requestId" TEXT, "keyId" TEXT, "dedupeKey" TEXT NOT NULL UNIQUE, "status" TEXT NOT NULL DEFAULT 'PENDING', "attempts" INTEGER NOT NULL DEFAULT 0, "lastErrorCode" TEXT, "sentAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX "DiscordNotification_status_createdAt_idx" ON "DiscordNotification"("status", "createdAt");
+CREATE INDEX "DiscordNotification_requestId_idx" ON "DiscordNotification"("requestId");

@@ -3,10 +3,15 @@
 Prérequis : l'application Discord est configurée (voir
 [`DEPLOIEMENT.md` §1](DEPLOIEMENT.md)).
 
-## 1. Image publique GHCR
+## 1. Déclarer le registre privé GHCR
 
-L'image `ghcr.io/kesurof/sfr-r2-public` est publique. Aucun registre privé ni
-identifiant GHCR n'est nécessaire.
+L'image `ghcr.io/kesurof/sfr-r2-public` est privée.
+
+1. Créer un **Personal Access Token (classic)** GitHub avec la portée `read:packages`.
+2. Coolify → **Keys & Tokens → Registries** (ou *Sources*) → **Add** :
+   - URL : `ghcr.io`
+   - Username : `kesurof`
+   - Password : le PAT
 
 ## 2. Créer la ressource
 

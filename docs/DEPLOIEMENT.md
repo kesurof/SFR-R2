@@ -20,10 +20,14 @@ Sur le [portail développeur Discord](https://discord.com/developers/application
 6. Récupérer votre **ID Discord** (clic droit sur votre pseudo → *Copier l'identifiant*)
    → `ADMIN_DISCORD_IDS`.
 
-## 2. Image Docker
+## 2. Se connecter au registre privé
 
-L'image publiée sur GHCR est publique : aucune authentification au registre n'est
-nécessaire pour la tirer.
+L'image est privée. Créer un **Personal Access Token (classic)** GitHub avec la portée
+`read:packages`, puis :
+
+```bash
+echo "VOTRE_PAT" | docker login ghcr.io -u kesurof --password-stdin
+```
 
 ## 3. Fichiers
 

@@ -24,7 +24,8 @@ const DEFAULT_FILTERS = {
   fId: "",
   fRole: "",
   fSponsor: "",
-  sortKey: "" as "" | "server" | "account",
+  fApproval: "",
+  sortKey: "" as "" | "server" | "account" | "approval",
   sortDir: "asc" as "asc" | "desc",
   page: 1,
 };
@@ -73,6 +74,8 @@ export function UserTable({ users }: { users: User[] }) {
       if (f.fRole && f.fRole !== "__none" && !roles.includes(f.fRole)) return false;
       if (f.fSponsor === "yes" && !u.sponsorPermission) return false;
       if (f.fSponsor === "no" && u.sponsorPermission) return false;
+      if (f.fApproval === "yes" && !u.accessApproverPermission) return false;
+      if (f.fApproval === "no" && u.accessApproverPermission) return false;
       if (g) {
         const hay = `${rowNick} ${u.username} ${u.discordId} ${roles.join(" ")}`.toLowerCase();
         if (!hay.includes(g)) return false;
@@ -82,6 +85,7 @@ export function UserTable({ users }: { users: User[] }) {
 
     if (f.sortKey) {
       const ts = (u: User) => {
+        if (f.sortKey === "approval") return u.accessApproverPermission ? 1 : 0;
         const d = f.sortKey === "server" ? toDate(u.joinedAt) : accountCreatedAt(u.discordId);
         return d ? d.getTime() : null;
       };
@@ -97,13 +101,13 @@ export function UserTable({ users }: { users: User[] }) {
       });
     }
     return rows;
-  }, [users, f.global, f.fNick, f.fName, f.fId, f.fRole, f.fSponsor, f.sortKey, f.sortDir]);
+  }, [users, f.global, f.fNick, f.fName, f.fId, f.fRole, f.fSponsor, f.fApproval, f.sortKey, f.sortDir]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(f.page, pages);
   const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  function sortHeader(label: string, key: "server" | "account") {
+  function sortHeader(label: string, key: "server" | "account" | "approval") {
     const active = f.sortKey === key;
     return (
       <button
@@ -152,7 +156,7 @@ export function UserTable({ users }: { users: User[] }) {
               <th>{sortHeader("Sur le serveur", "server")}</th>
               <th>{sortHeader("Compte Discord", "account")}</th>
               <th>Parrainage</th>
-              <th>Approbation</th>
+              <th>{sortHeader("Approbation", "approval")}</th>
             </tr>
             <tr className="col-filter">
               <th>
@@ -184,7 +188,13 @@ export function UserTable({ users }: { users: User[] }) {
                   <option value="no">Non autorisé</option>
                 </select>
               </th>
-              <th />
+              <th>
+                <select aria-label="Filtrer par approbation" value={f.fApproval} onChange={(e) => patch({ fApproval: e.target.value, page: 1 })}>
+                  <option value="">Tous</option>
+                  <option value="yes">Autorisé</option>
+                  <option value="no">Non autorisé</option>
+                </select>
+              </th>
             </tr>
           </thead>
           <tbody>

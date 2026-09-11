@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/access";
-import { getNotificationSettings } from "@/lib/settings";
+import { getAccessRequestWebhookUrl, getNotificationSettings, isValidDiscordWebhookUrl } from "@/lib/settings";
+import { buildAccessRequestWebhookPayload, sendDiscordWebhook } from "@/lib/discord-webhook";
 
-type Input = { type: string; targetId?: string; recipientDiscordId?: string; targetKind?: "DM" | "CHANNEL"; requestId?: string; accessRequestId?: string; keyId?: string; dedupeKey: string; message: string };
+type Input = { type: string; targetId?: string; recipientDiscordId?: string; targetKind?: "DM" | "CHANNEL" | "WEBHOOK"; requestId?: string; accessRequestId?: string; keyId?: string; dedupeKey: string; message: string };
 
 const API = "https://discord.com/api/v10";
 const MAX_ATTEMPTS = 3;
@@ -28,6 +29,14 @@ function discordErrorCode(status: number) {
   return "DISCORD_ERROR";
 }
 
+function webhookErrorCode(status: number) {
+  if (status === 400 || status === 401 || status === 404) return "WEBHOOK_INVALID";
+  if (status === 429) return "DISCORD_429";
+  return "WEBHOOK_ERROR";
+}
+
+class PermanentNotificationError extends Error {}
+
 function backoffMs(attemptsAfterFailure: number) {
   return BACKOFF_SECONDS[Math.min(attemptsAfterFailure - 1, BACKOFF_SECONDS.length - 1)] * 1000;
 }
@@ -38,7 +47,7 @@ function backoffMs(attemptsAfterFailure: number) {
  */
 export async function queueNotification(input: Input) {
   try {
-    const targetId = input.targetId ?? input.recipientDiscordId;
+    const targetId = input.targetId ?? input.recipientDiscordId ?? (input.targetKind === "WEBHOOK" ? "access-request-webhook" : undefined);
     if (!targetId) return null;
     if (!(await getNotificationSettings()).discordNotificationsEnabled) return null;
 
@@ -57,7 +66,7 @@ export async function queueNotification(input: Input) {
       },
     });
 
-    await audit("DISCORD_NOTIFICATION_QUEUED", undefined, input.targetKind === "CHANNEL" ? undefined : targetId, input.requestId, input.keyId, { type: input.type, targetKind: input.targetKind ?? "DM" });
+    await audit("DISCORD_NOTIFICATION_QUEUED", undefined, input.targetKind === "DM" ? targetId : undefined, input.requestId, input.keyId, { type: input.type, targetKind: input.targetKind ?? "DM" });
 
     // Tentative immédiate sans bloquer l'appelant. La réservation atomique de
     // `deliverNotification` empêche tout doublon avec le worker.
@@ -74,6 +83,7 @@ type NotificationRow = {
   targetId: string;
   targetKind: string;
   requestId: string | null;
+  accessRequestId: string | null;
   keyId: string | null;
   message: string;
   attempts: number;
@@ -99,6 +109,47 @@ async function releaseAfterFailure(row: NotificationRow, errorCode: string) {
   }
 }
 
+async function abandonNotification(row: NotificationRow, errorCode: string) {
+  await prisma.discordNotification.update({
+    where: { id: row.id },
+    data: { status: "FAILED", attempts: { increment: 1 }, lastErrorCode: errorCode, nextAttemptAt: null },
+  });
+  await audit("DISCORD_NOTIFICATION_FAILED", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, errorCode, targetKind: row.targetKind });
+}
+
+function accessRequestUrl(id: string) {
+  const base = (process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "");
+  if (!base) throw new PermanentNotificationError("WEBHOOK_REQUEST_URL_UNAVAILABLE");
+  return `${base}/demandes-acces?request=${encodeURIComponent(id)}`;
+}
+
+async function deliverWebhookNotification(row: NotificationRow) {
+  const webhookUrl = await getAccessRequestWebhookUrl();
+  if (!webhookUrl || !isValidDiscordWebhookUrl(webhookUrl)) throw new PermanentNotificationError("WEBHOOK_NOT_CONFIGURED");
+  if (!row.accessRequestId) throw new PermanentNotificationError("WEBHOOK_REQUEST_MISSING");
+
+  const request = await prisma.accessRequest.findUnique({ where: { id: row.accessRequestId }, include: { requester: true } });
+  if (!request) throw new PermanentNotificationError("WEBHOOK_REQUEST_NOT_FOUND");
+
+  const payload = buildAccessRequestWebhookPayload({
+    requesterName: request.requester.serverNickname || request.requester.username,
+    createdAt: request.createdAt,
+    requestUrl: accessRequestUrl(request.id),
+  });
+
+  let sent: Response;
+  try {
+    sent = await sendDiscordWebhook(webhookUrl, payload, fetchWithTimeout);
+  } catch {
+    throw new Error("WEBHOOK_TIMEOUT");
+  }
+  if (!sent.ok) {
+    const errorCode = webhookErrorCode(sent.status);
+    if (errorCode === "WEBHOOK_INVALID") throw new PermanentNotificationError(errorCode);
+    throw new Error(errorCode);
+  }
+}
+
 async function deliverNotification(id: string) {
   // Réservation atomique : un seul appelant (tentative immédiate ou worker) peut
   // passer la ligne de PENDING à SENDING. C'est ce qui garantit l'absence de doublon.
@@ -111,26 +162,31 @@ async function deliverNotification(id: string) {
   const row = await prisma.discordNotification.findUnique({ where: { id } });
   if (!row) return;
 
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) {
-    await releaseAfterFailure(row, "NO_TOKEN");
-    return;
-  }
-
   try {
-    let channelId = row.targetId;
-    if (row.targetKind === "DM") {
-      const dm = await fetchWithTimeout(`${API}/users/@me/channels`, { method: "POST", headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ recipient_id: row.targetId }) });
-      if (!dm.ok) throw new Error(discordErrorCode(dm.status));
-      channelId = ((await dm.json()) as { id: string }).id;
-    }
+    if (row.targetKind === "WEBHOOK") {
+      await deliverWebhookNotification(row);
+    } else {
+      if (row.targetKind === "CHANNEL" && row.type === "ACCESS_REQUEST_REVIEW") throw new PermanentNotificationError("CHANNEL_NOTIFICATION_DISABLED");
+      const token = process.env.DISCORD_BOT_TOKEN;
+      if (!token) {
+        await releaseAfterFailure(row, "NO_TOKEN");
+        return;
+      }
 
-    const sent = await fetchWithTimeout(`${API}/channels/${channelId}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ content: row.message || notificationText(row.type) }),
-    });
-    if (!sent.ok) throw new Error(discordErrorCode(sent.status));
+      let channelId = row.targetId;
+      if (row.targetKind === "DM") {
+        const dm = await fetchWithTimeout(`${API}/users/@me/channels`, { method: "POST", headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ recipient_id: row.targetId }) });
+        if (!dm.ok) throw new Error(discordErrorCode(dm.status));
+        channelId = ((await dm.json()) as { id: string }).id;
+      }
+
+      const sent = await fetchWithTimeout(`${API}/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: row.message || notificationText(row.type) }),
+      });
+      if (!sent.ok) throw new Error(discordErrorCode(sent.status));
+    }
 
     await prisma.discordNotification.update({
       where: { id },
@@ -138,7 +194,8 @@ async function deliverNotification(id: string) {
     });
     await audit("DISCORD_NOTIFICATION_SENT", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, targetKind: row.targetKind });
   } catch (error) {
-    await releaseAfterFailure(row, error instanceof Error ? error.message : "DISCORD_ERROR");
+    if (error instanceof PermanentNotificationError) await abandonNotification(row, error.message);
+    else await releaseAfterFailure(row, error instanceof Error ? error.message : "DISCORD_ERROR");
   }
 }
 
@@ -218,6 +275,7 @@ export function notificationText(type: string) {
     KEY_REVOKED: "Votre clé d’accès a été révoquée. Contactez l’équipe.",
     SPONSOR_GRANTED: "Le droit de parrainer vous a été accordé.",
     SPONSOR_REVOKED: "Votre droit de parrainer a été retiré.",
+    ACCESS_REQUEST_WEBHOOK: "Nouvelle demande d’accès.",
   };
   return map[type] ?? "Une mise à jour est disponible sur le portail.";
 }

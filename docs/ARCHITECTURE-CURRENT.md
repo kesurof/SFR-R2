@@ -38,7 +38,7 @@ au-delà de la protection des pages.
 
 Les administrateurs gèrent les droits de parrainage et d’approbation, synchronisent les membres,
 décident des demandes, enregistrent ou révoquent les clés et configurent les
-notifications privées Discord. Un membre non administrateur ne peut parrainer
+notifications Discord. Un membre non administrateur ne peut parrainer
 qu'après obtention du droit correspondant.
 
 ## Flux métier
@@ -102,16 +102,21 @@ La synchronisation Discord lit les rôles et pagine les membres du serveur. Elle
 met à jour le nom, surnom de serveur, date d'arrivée et noms de rôles des membres
 connus, puis enregistre son résultat dans `SyncState`.
 
-Les notifications Discord sont des DM ou des messages de salon mis en file en base. Leur mise en file ne
+Les notifications Discord sont des DM ou des messages de webhook mis en file en base. Leur mise en file ne
 fait pas échouer l'action métier qui les déclenche. Le worker démarré par
 `instrumentation.ts` essaie immédiatement puis traite périodiquement les éléments
 en attente, évite les doublons par réservation atomique, reprend les envois bloqués
 et abandonne après trois échecs avec délais de reprise.
 
-Les nouvelles demandes d’accès alertent le salon configuré dans les paramètres
-globaux de l’application, sans exposer leurs réponses. Le demandeur est notifié par
-DM à la soumission et à la décision ; les administrateurs reçoivent un DM lorsqu’une
-demande acceptée attend une clé.
+Les nouvelles demandes d’accès alertent le webhook Discord configuré dans les
+paramètres globaux de l’application avec un embed contenant le pseudo, la date et
+un lien direct vers la demande, sans exposer ses réponses. Le demandeur est notifié
+par DM à la soumission et à la décision ; les administrateurs reçoivent un DM
+lorsqu’une demande acceptée attend une clé.
+
+L’URL du webhook est chiffrée avec `ENCRYPTION_KEY` et n’est jamais renvoyée à
+l’interface d’administration ni aux journaux. Sa configuration et sa suppression
+se font depuis `/admin?view=settings`.
 
 ## Sécurité et configuration
 

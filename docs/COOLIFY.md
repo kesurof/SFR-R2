@@ -58,9 +58,9 @@ Onglet **Environment Variables**, mêmes clés que `.env.example` :
 - `TRUST_PROXY=true`
 - `DISCORD_INVITE_URL` (optionnel)
 
-Après le premier déploiement, ouvrir `/admin?view=settings` et renseigner l’ID du
-salon privé des demandes d’accès. Le réglage est stocké dans la base SQLite ; le bot
-doit avoir l’autorisation d’y écrire.
+Après le premier déploiement, créer un webhook entrant Discord dans le salon cible,
+copier son URL, puis ouvrir `/admin?view=settings` et la renseigner. L’URL est
+chiffrée dans la base SQLite et ne doit pas être ajoutée aux variables Coolify.
 
 ## 5. Domaine et HTTPS
 

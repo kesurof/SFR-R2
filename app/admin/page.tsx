@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { revoke, updateNotificationSettings } from "@/app/actions";
+import { clearAccessRequestWebhook, revoke, updateNotificationSettings } from "@/app/actions";
 import { UserManagement } from "@/app/admin/user-management";
 import { RequestTable } from "@/app/admin/request-table";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
@@ -257,7 +257,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <div className="panel-head">
             <div>
               <h2>Notifications Discord</h2>
-              <p className="faint" style={{ marginTop: 4 }}>Réglages des messages privés envoyés par le portail.</p>
+              <p className="faint" style={{ marginTop: 4 }}>Réglages des notifications envoyées par le portail.</p>
             </div>
             <span className={`badge ${settings.discordNotificationsEnabled ? "ready" : "archived"}`}>
               {settings.discordNotificationsEnabled ? "Activées" : "Désactivées"}
@@ -278,12 +278,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <input id="notificationWorkerIntervalSeconds" name="notificationWorkerIntervalSeconds" type="number" min={10} max={3600} step={1} defaultValue={settings.notificationWorkerIntervalSeconds} required />
                   <span className="faint">secondes</span>
                 </div>
-                <span className="hint">Entre 10 et 3 600 secondes. Les notifications sont envoyées uniquement en message privé ; aucune clé ni aucun token n’est transmis.</span>
+                <span className="hint">Entre 10 et 3 600 secondes. Les notifications sont traitées en arrière-plan ; aucune clé ni aucun token n’est transmis.</span>
               </div>
-              <div className="field settings-interval">
-                <label htmlFor="accessRequestChannelId">Salon des demandes d’accès</label>
-                <input id="accessRequestChannelId" name="accessRequestChannelId" className="mono" inputMode="numeric" pattern="[0-9]{17,20}" defaultValue={settings.accessRequestChannelId ?? ""} placeholder="Discord ID du salon demande-parrainage" />
-                <span className="hint">ID du salon privé où le bot publie les nouvelles demandes. Laissez vide pour désactiver ces alertes.</span>
+              <div className="field settings-webhook">
+                <label htmlFor="accessRequestWebhookUrl">Webhook Discord des nouvelles demandes</label>
+                <div className="inline-field">
+                  <input id="accessRequestWebhookUrl" name="accessRequestWebhookUrl" type="password" autoComplete="new-password" spellCheck={false} placeholder={settings.accessRequestWebhookConfigured ? "Webhook configuré — laisser vide pour le conserver" : "https://discord.com/api/webhooks/…"} />
+                  {settings.accessRequestWebhookConfigured && <span className="badge ready">Configuré</span>}
+                </div>
+                <span className="hint">L’URL est chiffrée et masquée. Elle sert uniquement à publier un embed lors d’une nouvelle demande d’accès. Laissez vide pour conserver le webhook actuel.</span>
               </div>
               <div className="banner info" role="note">
                 <div><b>À savoir</b><p>Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation.</p></div>
@@ -293,6 +296,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <span className="faint settings-updated">Dernière modification : {settings.updatedAt.toLocaleString("fr-FR")} {settings.updatedByDiscordId ? `par ${settings.updatedByDiscordId}` : "(initialisation)"}</span>
               </div>
             </form>
+            {settings.accessRequestWebhookConfigured && (
+              <form action={clearAccessRequestWebhook} className="settings-webhook-actions">
+                <ConfirmSubmit title="Supprimer le webhook ?" message="Les nouvelles demandes ne seront plus envoyées à ce webhook. Cette action ne peut pas être annulée automatiquement." confirmLabel="Supprimer le webhook">
+                  Supprimer le webhook
+                </ConfirmSubmit>
+              </form>
+            )}
           </div>
         </div>
       )}

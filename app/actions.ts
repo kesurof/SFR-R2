@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { audit, ensureUser, identity, requireAccessApprover, requireAdmin, requireMember } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
+import { encrypt } from "@/lib/crypto";
 import { decideRequest, issueClaim, revokeKey, saveKey, submitRequest } from "@/lib/workflow";
 import { queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
 import { getNotificationSettings, parseNotificationSettingsInput } from "@/lib/settings";
@@ -22,21 +23,40 @@ export async function updateNotificationSettings(data: FormData) {
   const actor = await requireAdmin();
   try {
     const current = await getNotificationSettings();
-    const next = parseNotificationSettingsInput(data.get("discordNotificationsEnabled"), data.get("notificationWorkerIntervalSeconds"), data.get("accessRequestChannelId"));
+    const stored = await prisma.appSettings.findUnique({ where: { id: "global" }, select: { accessRequestWebhookEncrypted: true } });
+    const parsed = parseNotificationSettingsInput(data.get("discordNotificationsEnabled"), data.get("notificationWorkerIntervalSeconds"), data.get("accessRequestWebhookUrl"));
+    const webhookEncrypted = parsed.accessRequestWebhookUrl ? encrypt(parsed.accessRequestWebhookUrl) : stored?.accessRequestWebhookEncrypted ?? null;
+    const next = { discordNotificationsEnabled: parsed.discordNotificationsEnabled, notificationWorkerIntervalSeconds: parsed.notificationWorkerIntervalSeconds, accessRequestWebhookEncrypted: webhookEncrypted };
     await prisma.appSettings.upsert({ where: { id: "global" }, update: { ...next, updatedByDiscordId: actor.discordId }, create: { id: "global", ...next, updatedByDiscordId: actor.discordId } });
     await audit("NOTIFICATION_SETTINGS_UPDATED", actor.discordId, undefined, undefined, undefined, {
-      previous: { discordNotificationsEnabled: current.discordNotificationsEnabled, notificationWorkerIntervalSeconds: current.notificationWorkerIntervalSeconds },
-      next,
+      previous: { discordNotificationsEnabled: current.discordNotificationsEnabled, notificationWorkerIntervalSeconds: current.notificationWorkerIntervalSeconds, accessRequestWebhookConfigured: current.accessRequestWebhookConfigured },
+      next: { discordNotificationsEnabled: next.discordNotificationsEnabled, notificationWorkerIntervalSeconds: next.notificationWorkerIntervalSeconds, accessRequestWebhookConfigured: Boolean(next.accessRequestWebhookEncrypted) },
       result: "success",
     });
     wakeNotificationWorker();
   } catch (error) {
-    const reason = error instanceof Error && error.message.startsWith("L'intervalle") ? "INVALID_INTERVAL" : "UPDATE_FAILED";
+    const reason = error instanceof Error && error.message.startsWith("L'intervalle") ? "INVALID_INTERVAL" : error instanceof Error && error.message.startsWith("L’URL") ? "INVALID_WEBHOOK" : "UPDATE_FAILED";
     try { await audit("NOTIFICATION_SETTINGS_UPDATE_FAILED", actor.discordId, undefined, undefined, undefined, { result: "error", reason }); } catch { /* ne masque pas l'erreur utilisateur */ }
     adminRedirect("settings_error", "settings");
   }
   revalidatePath("/admin");
   adminRedirect("settings_saved", "settings");
+}
+
+export async function clearAccessRequestWebhook() {
+  const actor = await requireAdmin();
+  try {
+    const current = await getNotificationSettings();
+    await prisma.appSettings.update({ where: { id: "global" }, data: { accessRequestWebhookEncrypted: null, updatedByDiscordId: actor.discordId } });
+    await prisma.discordNotification.updateMany({ where: { targetKind: "WEBHOOK", status: "PENDING" }, data: { status: "FAILED", lastErrorCode: "WEBHOOK_DISABLED", nextAttemptAt: null } });
+    await audit("NOTIFICATION_WEBHOOK_CLEARED", actor.discordId, undefined, undefined, undefined, { previousConfigured: current.accessRequestWebhookConfigured, result: "success" });
+    wakeNotificationWorker();
+  } catch {
+    try { await audit("NOTIFICATION_WEBHOOK_CLEAR_FAILED", actor.discordId, undefined, undefined, undefined, { result: "error" }); } catch { /* ne masque pas l'erreur utilisateur */ }
+    adminRedirect("settings_error", "settings");
+  }
+  revalidatePath("/admin");
+  adminRedirect("webhook_cleared", "settings");
 }
 
 const accessRequestRedirect = (code: string) => redirect(`/demandes-acces?notice=${encodeURIComponent(code)}`);

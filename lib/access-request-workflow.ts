@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { audit, ensureUser } from "@/lib/access";
 import { encrypt, hash, mask } from "@/lib/crypto";
 import { queueNotification } from "@/lib/discord-notifications";
+import { ACCESS_REQUEST_WEBHOOK_TARGET } from "@/lib/discord-webhook";
 import { accessRequestDecisionError, accessRequestInputError, type AccessRequestInput } from "@/lib/access-request-rules";
 import { getNotificationSettings } from "@/lib/settings";
 
@@ -17,7 +18,7 @@ export async function submitAccessRequest(actor: { discordId: string; username: 
   await audit("ACCESS_REQUEST_CREATED", actor.discordId, actor.discordId, undefined, undefined, { accessRequestId: request.id });
   await queueNotification({ type: "ACCESS_REQUEST_CREATED", targetId: actor.discordId, accessRequestId: request.id, dedupeKey: `access-request-created:${request.id}`, message: "Votre demande d’accès a bien été reçue. L’équipe va l’examiner." });
   const settings = await getNotificationSettings();
-  if (settings.accessRequestChannelId) await queueNotification({ type: "ACCESS_REQUEST_REVIEW", targetId: settings.accessRequestChannelId, targetKind: "CHANNEL", accessRequestId: request.id, dedupeKey: `access-request-review:${request.id}`, message: `Nouvelle demande d’accès de ${actor.username} (${actor.discordId}) : ${portal()}/demandes-acces?request=${request.id}` });
+  if (settings.accessRequestWebhookConfigured) await queueNotification({ type: "ACCESS_REQUEST_WEBHOOK", targetId: ACCESS_REQUEST_WEBHOOK_TARGET, targetKind: "WEBHOOK", accessRequestId: request.id, dedupeKey: `access-request-webhook:${request.id}`, message: "Nouvelle demande d’accès." });
   return request;
 }
 

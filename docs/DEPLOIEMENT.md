@@ -13,8 +13,8 @@ Sur le [portail développeur Discord](https://discord.com/developers/application
    - *Reset Token* → `DISCORD_BOT_TOKEN`
    - **Privileged Gateway Intents** → activer **Server Members Intent** uniquement
 4. Installer le bot sur le serveur (onglet *Installation* ou URL OAuth2 avec le scope
-   `bot`, permissions *Read Messages/View Channels* et *Send Messages* dans le salon
-   privé des demandes d'accès.
+   `bot`, permissions nécessaires à la synchronisation des membres et aux messages
+   privés).
 5. Récupérer l'**ID du serveur** (Paramètres Discord → Avancés → Mode développeur, puis
    clic droit sur le serveur → *Copier l'identifiant*) → `DISCORD_GUILD_ID`.
 6. Récupérer votre **ID Discord** (clic droit sur votre pseudo → *Copier l'identifiant*)
@@ -55,9 +55,9 @@ cp .env.example .env
 | `TRUST_PROXY` | non | `true` si un proxy renseigne `X-Forwarded-For` |
 | `RATE_LIMIT_*` | non | quotas du lien de récupération (défauts raisonnables) |
 
-Après le premier déploiement, ouvrir `/admin?view=settings` et renseigner l’ID du
-salon privé des demandes d’accès. Le bot doit pouvoir y écrire. Ce réglage est
-conservé dans la base SQLite, pas dans `.env`.
+Après le premier déploiement, créer un webhook entrant Discord dans le salon cible,
+copier son URL, puis ouvrir `/admin?view=settings` et la renseigner. L’URL est
+chiffrée dans la base SQLite et n’est pas ajoutée à `.env`.
 
 ## 4. Lancer
 

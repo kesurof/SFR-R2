@@ -38,7 +38,7 @@ model AppSettings {
   id                              String   @id @default("global")
   discordNotificationsEnabled    Boolean  @default(true)
   notificationWorkerIntervalSeconds Int    @default(30)
-  accessRequestChannelId            String?
+  accessRequestWebhookEncrypted     String?
   updatedAt                       DateTime @updatedAt
   updatedByDiscordId              String?
 }

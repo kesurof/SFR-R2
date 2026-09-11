@@ -129,6 +129,8 @@ code,kbd{font-family:var(--mono)}
 .settings-toggle strong{display:block;font-size:13.5px}
 .settings-toggle .sub{display:block;margin-top:3px}
 .settings-interval{max-width:360px}
+.settings-webhook{max-width:760px}
+.settings-webhook-actions{display:flex;align-items:center;margin-top:18px}
 .inline-field{display:flex;align-items:center;gap:9px}
 .inline-field input{max-width:150px}
 .settings-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}

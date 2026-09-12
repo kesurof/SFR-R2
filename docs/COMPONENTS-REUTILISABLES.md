@@ -40,6 +40,9 @@ des vérifications indirectes lorsqu'aucun test dédié n'existe.
 | Règles du workflow de parrainage et de récupération | Helper métier partagé | `lib/workflow-rules.ts` | Règles pures d'éligibilité, de refus et de consommation d'un lien. | `claimRefusal`, `isClaimUsable`, `rejectionReasonError`, `saveKeyEligibilityError` | `lib/workflow.ts` et les tests de workflow. | Ne pas y ajouter d'accès à la base ni de dépendance React. | `tests/workflow-rules.test.ts` |
 | Notifications de remplacement de clé | Helper de présentation métier | `lib/key-replacement-notifications.ts` | Construit le lien ciblé et le DM administrateur sans secret. | `keyReplacementAdminUrl`, `buildKeyReplacementAdminMessage` | Workflow de remplacement et notification des administrateurs. | Utiliser uniquement une empreinte, un motif et un lien ; aucune clé en clair. | `tests/key-replacement.test.ts` |
 
+| Validation d'une clé | Helper partagé de domaine | `lib/access-key-rules.ts` | Vérifie qu'un secret de clé n'est pas vide avant sa persistance. | `accessKeySecretError(secret)` | `lib/access-key.ts` et les tests de restauration manuelle. | Garder la validation côté serveur ; ne jamais journaliser le secret. | `tests/manual-access.test.ts` |
+| Création de clé | Helper partagé de domaine | `lib/access-key.ts` | Chiffre un secret, calcule son hash et prépare les métadonnées d'affichage avant création d'une `AccessKey`. | `createAccessKey(tx, userId, secret)` | Workflows de parrainage, demande d'accès, remplacement et restauration manuelle. | Utiliser uniquement dans une transaction ; ne jamais retourner le secret ni écrire sa valeur dans un audit ou un log. | `tests/manual-access.test.ts`, `tests/crypto.test.ts` |
+
 ## Abstractions techniques existantes
 
 | Élément | Type | Chemin | Responsabilité | API principale | Usages actuels | Contraintes | Tests |

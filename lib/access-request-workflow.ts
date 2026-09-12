@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { audit, ensureUser } from "@/lib/access";
-import { encrypt, hash, mask } from "@/lib/crypto";
+import { mask } from "@/lib/crypto";
+import { createAccessKey } from "@/lib/access-key";
 import { queueNotification } from "@/lib/discord-notifications";
 import { ACCESS_REQUEST_WEBHOOK_TARGET } from "@/lib/discord-webhook";
 import { accessRequestDecisionError, accessRequestInputError, type AccessRequestInput } from "@/lib/access-request-rules";
@@ -36,7 +37,7 @@ export async function saveAccessRequestKey(id: string, secret: string, actorDisc
   if (!secret.trim()) throw new Error("La clé ne peut pas être vide.");
   const request = await prisma.accessRequest.findUnique({ where: { id }, include: { requester: true } });
   if (!request || request.status !== "APPROVED") throw new Error("Cette demande n’est pas approuvée.");
-  const key = await prisma.$transaction(async (tx) => { await tx.accessKey.updateMany({ where: { userId: request.requesterId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date() } }); const created = await tx.accessKey.create({ data: { userId: request.requesterId, encryptedSecret: encrypt(secret.trim()), secretHash: hash(secret.trim()), prefix: secret.trim().slice(0, 4), suffix: secret.trim().slice(-4) } }); await tx.accessRequest.update({ where: { id }, data: { status: "KEY_READY" } }); await tx.auditLog.create({ data: { event: "ACCESS_REQUEST_KEY_READY", actorDiscordId, targetDiscordId: request.requester.discordId, keyId: created.id, metadata: JSON.stringify({ accessRequestId: id }) } }); return created; });
+  const key = await prisma.$transaction(async (tx) => { await tx.accessKey.updateMany({ where: { userId: request.requesterId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date() } }); const created = await createAccessKey(tx, request.requesterId, secret); await tx.accessRequest.update({ where: { id }, data: { status: "KEY_READY" } }); await tx.auditLog.create({ data: { event: "ACCESS_REQUEST_KEY_READY", actorDiscordId, targetDiscordId: request.requester.discordId, keyId: created.id, metadata: JSON.stringify({ accessRequestId: id }) } }); return created; });
   await queueNotification({ type: "ACCESS_REQUEST_KEY_READY", targetId: request.requester.discordId, accessRequestId: id, keyId: key.id, dedupeKey: `access-request-key-ready:${key.id}`, message: `Votre clé est disponible. Connectez-vous au portail : ${portal()}` });
   return mask(`${key.prefix}xxxxxxxx${key.suffix}`);
 }

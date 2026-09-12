@@ -11,6 +11,7 @@ dans le code : leur contexte et leurs alternatives ne sont pas attestés ici.
 | --- | --- | --- |
 | [0001](adr/0001-demandes-acces-et-approbation.md) | Accepté | Les demandes d’accès sont distinctes du parrainage et instruites par des approbateurs applicatifs. |
 | [0002](adr/0002-remplacement-des-cles.md) | Accepté | Les remplacements de clés sont des demandes séparées, traitées dans la vue des clés par une rotation transactionnelle. |
+| [0003](adr/0003-restauration-manuelle-utilisateurs-cles.md) | Accepté | Les accès perdus peuvent être restaurés unitairement par un administrateur, avec création transactionnelle et audit explicite. |
 
 Les ADR futures sont créées sous `docs/adr/NNNN-titre-court.md`, avec une
 numérotation séquentielle à quatre chiffres. `DECISIONS.md` est l'index de ces ADR,

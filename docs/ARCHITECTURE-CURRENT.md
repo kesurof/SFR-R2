@@ -37,8 +37,8 @@ est refusé. Les actions de soumission revalident cette appartenance côté serv
 au-delà de la protection des pages.
 
 Les administrateurs gèrent les droits de parrainage et d’approbation, synchronisent les membres,
-décident des demandes, enregistrent, remplacent ou révoquent les clés et configurent les
-notifications Discord. Un membre non administrateur ne peut parrainer
+décident des demandes, restaurent manuellement des accès, enregistrent, remplacent ou révoquent
+les clés et configurent les notifications Discord. Un membre non administrateur ne peut parrainer
 qu'après obtention du droit correspondant.
 
 ## Flux métier
@@ -91,6 +91,15 @@ demande `REJECTED` et conserve le motif de décision.
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.
 
+Après une perte de données, un administrateur peut restaurer un accès depuis
+`/admin?view=users` en saisissant un Discord ID, un nom, un pseudo serveur facultatif
+et la clé complète. L'utilisateur est créé s'il est absent ; son profil existant
+n'est pas écrasé. Une clé active déjà présente bloque la restauration. La nouvelle
+clé est active immédiatement, datée au moment de la restauration et enregistrée avec
+les événements d'audit `USER_CREATED_MANUALLY` et
+`ACCESS_KEY_RESTORED_MANUALLY` selon le cas. La valeur en clair n'est jamais
+conservée dans un audit ou un journal.
+
 ### Récupération de clé
 
 Un membre ayant une clé active peut créer un lien personnel. Le jeton aléatoire est
@@ -114,6 +123,11 @@ données et ses migrations versionnées sont la source de vérité du schéma.
 Les secrets de clés sont chiffrés avec AES-256-GCM à partir de `ENCRYPTION_KEY`.
 La base conserve aussi une empreinte SHA-256 et des préfixe/suffixe d'affichage ;
 elle ne stocke pas les jetons de récupération en clair.
+
+La création des enregistrements `AccessKey` est centralisée dans
+`lib/access-key.ts`, utilisé par les parcours de parrainage, de demande d'accès,
+de remplacement et de restauration manuelle. Les opérations de restauration sont
+transactionnelles : un échec ne conserve ni nouvel utilisateur ni nouvelle clé.
 
 La synchronisation Discord lit les rôles et pagine les membres du serveur. Elle
 met à jour le nom, surnom de serveur, date d'arrivée et noms de rôles des membres

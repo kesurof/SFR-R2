@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/access";
-import { encrypt, hash } from "@/lib/crypto";
+import { hash } from "@/lib/crypto";
+import { createAccessKey } from "@/lib/access-key";
 import { queueNotification } from "@/lib/discord-notifications";
 import { buildKeyReplacementAdminMessage, keyReplacementAdminUrl } from "@/lib/key-replacement-notifications";
 import { keyReplacementDecisionError, keyReplacementInputError } from "@/lib/key-replacement-rules";
@@ -73,15 +74,7 @@ export async function replaceKey(requestId: string, secret: string, actorDiscord
     const revoked = await tx.accessKey.updateMany({ where: { id: request.currentKeyId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date() } });
     if (revoked.count !== 1) throw new Error("La clé ciblée n’est plus active.");
 
-    const created = await tx.accessKey.create({
-      data: {
-        userId: request.userId,
-        encryptedSecret: encrypt(trimmed),
-        secretHash: hash(trimmed),
-        prefix: trimmed.slice(0, 4),
-        suffix: trimmed.slice(-4),
-      },
-    });
+    const created = await createAccessKey(tx, request.userId, trimmed);
     await tx.keyReplacementRequest.update({ where: { id: requestId }, data: { status: "COMPLETED", decidedByDiscordId: actorDiscordId, decidedAt: new Date() } });
     await tx.auditLog.create({
       data: {

@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { audit, ensureUser, isAdmin } from "@/lib/access";
 import { isDiscordMember } from "@/lib/membership";
-import { createToken, decrypt, encrypt, hash, mask } from "@/lib/crypto";
+import { createToken, decrypt, hash, mask } from "@/lib/crypto";
+import { createAccessKey } from "@/lib/access-key";
 import { queueNotification } from "@/lib/discord-notifications";
 import {
   claimRefusal,
@@ -160,15 +161,7 @@ export async function saveKey(requestId: string, secret: string, actorDiscordId:
       data: { status: "REVOKED", revokedAt: new Date() },
     });
 
-    const created = await tx.accessKey.create({
-      data: {
-        userId: referredUserId,
-        encryptedSecret: encrypt(trimmed),
-        secretHash: hash(trimmed),
-        prefix: trimmed.slice(0, 4),
-        suffix: trimmed.slice(-4),
-      },
-    });
+    const created = await createAccessKey(tx, referredUserId, trimmed);
 
     await tx.sponsorshipRequest.update({ where: { id: requestId }, data: { status: "KEY_READY" } });
 

@@ -39,6 +39,7 @@ const NOTICES: Record<string, [ToastType, string, string]> = {
   key_replacement_requested: ["success", "Demande envoyée", "Les administrateurs ont été prévenus."],
   approver_granted: ["success", "Droit d’approbation accordé", ""],
   approver_revoked: ["success", "Droit d’approbation retiré", ""],
+  manual_access_restored: ["success", "Accès restauré", "L’utilisateur et sa clé active ont été enregistrés."],
 };
 
 export function FlashToasts() {

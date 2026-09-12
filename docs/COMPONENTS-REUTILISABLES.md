@@ -21,9 +21,9 @@ des vérifications indirectes lorsqu'aucun test dédié n'existe.
 | `ConfirmSubmit` | Composant partagé | `app/components/confirm-submit.tsx` | Confirmation accessible avant la soumission d'une action destructive. | `title`, `message`, `confirmLabel`, `className`, `name`, `value`, `children` | `app/admin/request-table.tsx`, `app/admin/page.tsx` | Doit rester dans le formulaire concerné et préserver l'annulation, le clavier et le `name/value` transmis à la Server Action. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `PendingButton` | Composant partagé | `app/components/pending-button.tsx` | Bouton de soumission désactivé pendant une Server Action. | `children`, `pendingLabel`, `className`, `name`, `value` | Demande d'accès, parrainage, `/mon-acces`, administration et synchronisation Discord. | Doit être descendant du formulaire concerné et utiliser `useFormStatus`. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `StatusBadge` | Composant partagé | `app/components/status-badge.tsx` | Affichage uniforme des statuts métier et de leur libellé. | `status` | Demandes d'accès, parrainage, détails d'administration et `/mon-acces`. | Ajouter les statuts dans `LABELS` plutôt que recréer un badge local ; les statuts inconnus gardent leur valeur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
-| `ToastProvider` / `useToast` | Composant et hook partagés | `app/components/toast.tsx` | Notifications client globales avec durée, fermeture, `aria-live` et portail. | `ToastProvider({ children })`, `useToast(): (type, title, message?) => void` | `app/layout.tsx`, `FlashToasts`, `CopyKey`, `CreateClaimButton`. | Le provider doit rester monté dans le layout ; ne pas créer un second système de toast. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
-| `FlashToasts` | Composant partagé | `app/components/flash-toasts.tsx` | Traduit `notice`, `error` et `success` dans l'URL en notifications client. | Aucun prop ; consomme `useSearchParams`, `usePathname` et `useRouter`. | `app/layout.tsx` | Ajouter les nouveaux codes dans `NOTICES` ; réserver ce composant aux messages issus des redirections serveur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
-| `ThemeToggle` | Composant partagé | `app/components/theme-toggle.tsx` | Bascule clair/sombre persistée dans `localStorage`. | Aucun prop. | `AppShell`. | Conserver le thème système initial et la clé `sfr-theme` ; ne pas créer de bouton de thème local. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `ThemeProvider` | Composant et hook partagés | `app/components/theme-provider.tsx` | Fournit le thème Ant Design, la locale `fr_FR` et l'instance `App` (message, notification, modal) ; expose `useThemeMode`. | `ThemeProvider({ children })`, `useThemeMode(): { mode, setMode, toggle }` | `app/layout.tsx`, `ThemeToggle` et tout composant utilisant `App.useApp()`. | Provider unique monté dans le layout ; ne pas créer un second `ConfigProvider` ni un autre système de notification. | `tests/antd-theme.test.ts` |
+| `FlashToasts` | Composant partagé | `app/components/flash-toasts.tsx` | Traduit `notice`, `error` et `success` dans l'URL en notifications Ant Design. | Aucun prop ; consomme `useSearchParams`, `usePathname`, `useRouter` et `App.useApp()`. | `app/layout.tsx` | Ajouter les nouveaux codes dans `NOTICES` ; réserver ce composant aux messages issus des redirections serveur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `ThemeToggle` | Composant partagé | `app/components/theme-toggle.tsx` | Bascule clair/sombre via le contexte de `ThemeProvider`, persistée dans `localStorage`. | Aucun prop. | `AppShell`. | Utiliser `useThemeMode` et conserver la clé `sfr-theme` ; ne pas créer de bouton de thème local. | `tests/antd-theme.test.ts` |
 | `usePersistentState` | Hook partagé | `app/components/use-persistent-state.ts` | Persiste un état sérialisable dans `sessionStorage` après hydratation. | `usePersistentState<T>(key, initial)` | Filtres de `RequestTable`, `UserTable` et `AccessRequestTable`. | Versionner la clé quand la forme change ; ne jamais y stocker de secret ; gérer l'indisponibilité du stockage. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 
 ## Briques partagées dans un domaine
@@ -73,8 +73,9 @@ une seconde implémentation partageant réellement le même contrat métier.
 ## Briques externes et choix actuels
 
 Les dépendances actuellement utilisées sont React/Next.js, Auth.js via
-`next-auth`, Prisma, Zod et Vitest. Les briques suivantes ne sont pas installées
-et ne doivent pas être ajoutées par réflexe :
+`next-auth`, Prisma, Zod, Vitest, Ant Design 6 (`antd`, `@ant-design/icons`,
+`@ant-design/nextjs-registry`) et Testing Library. Les briques suivantes ne sont
+pas installées et ne doivent pas être ajoutées par réflexe :
 
 | Besoin éventuel | Brique à considérer | Décision actuelle |
 | --- | --- | --- |
@@ -83,10 +84,11 @@ et ne doivent pas être ajoutées par réflexe :
 | Formulaires | React Hook Form | Les formulaires utilisent les Server Actions et les contrôles HTML natifs ; conserver cette approche tant qu'elle reste lisible. |
 | Cache et mutations client | TanStack Query | Pas de cache client nécessaire pour les pages server-rendered actuelles. |
 | Authentification | Better Auth | Auth.js est déjà intégré et couvre le besoin. |
-| UI accessible | shadcn/ui / Radix | L'interface actuelle repose sur du HTML natif et des styles locaux ; ne pas ajouter une couche de composants sans migration justifiée. |
+| UI accessible | Ant Design 6 | Introduit par l'ADR 0005 ; composants cœur, thème et locale `fr_FR`. Pro Components écarté (pré-release). |
+| UI accessible | shadcn/ui / Radix | Écarté au profit d'Ant Design par l'ADR 0005. |
 | État dans l'URL | `nuqs` | Les paramètres actuels sont peu nombreux et utilisent les API Next.js natives. |
 | Server Actions typées | `next-safe-action` | Les actions existantes restent simples ; à réévaluer seulement si la duplication de validation et de gestion d'erreur augmente. |
-| Notifications | Sonner | Le système `ToastProvider` est déjà centralisé et suffisant pour le périmètre actuel. |
+| Notifications | Sonner | Non retenu : `App`/`notification` d'Ant Design assure les notifications (ADR 0005). |
 | Stockage local structuré | Dexie | `localStorage` et `sessionStorage` couvrent les besoins actuels ; aucune donnée offline structurée n'est présente. |
 | Accès aux données | Drizzle ORM | Prisma est déjà la source de vérité du schéma et des migrations. |
 

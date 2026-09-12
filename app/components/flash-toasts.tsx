@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useToast, type ToastType } from "./toast";
+import { App } from "antd";
+
+type NoticeType = "success" | "error" | "warning" | "info";
 
 /** Codes émis par les redirections des server actions (`?notice=`). */
-const NOTICES: Record<string, [ToastType, string, string]> = {
+const NOTICES: Record<string, [NoticeType, string, string]> = {
   request_approved: ["success", "Demande acceptée", "Le filleul peut recevoir une clé."],
   request_rejected: ["success", "Demande refusée", "La demande a été marquée comme refusée."],
   request_archived: ["success", "Demande archivée", ""],
@@ -43,7 +45,7 @@ const NOTICES: Record<string, [ToastType, string, string]> = {
 };
 
 export function FlashToasts() {
-  const notify = useToast();
+  const { notification } = App.useApp();
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -61,18 +63,21 @@ export function FlashToasts() {
 
     if (notice && NOTICES[notice]) {
       const [type, title, msg] = NOTICES[notice];
-      notify(type, title, msg || undefined);
+      notification[type]({ message: title, description: msg || undefined, duration: type === "error" ? 0 : 5 });
     } else if (error) {
-      notify("error", "Demande non enregistrée", error);
+      notification.error({ message: "Demande non enregistrée", description: error, duration: 0 });
     } else if (success) {
-      notify("success", "Demande enregistrée", "L'équipe de StreamFusion Reborn va l'examiner.");
+      notification.success({
+        message: "Demande enregistrée",
+        description: "L'équipe de StreamFusion Reborn va l'examiner.",
+      });
     }
 
     const clean = new URLSearchParams(params.toString());
     ["notice", "error", "success"].forEach((k) => clean.delete(k));
     const qs = clean.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [params, pathname, notify, router]);
+  }, [params, pathname, notification, router]);
 
   return null;
 }

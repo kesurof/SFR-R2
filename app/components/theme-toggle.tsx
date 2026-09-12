@@ -1,29 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type Mode = "light" | "dark";
+import { useThemeMode } from "@/app/components/theme-provider";
 
 export function ThemeToggle() {
-  const [mode, setMode] = useState<Mode | null>(null);
-
-  useEffect(() => {
-    const attr = document.documentElement.getAttribute("data-theme");
-    if (attr === "light" || attr === "dark") setMode(attr);
-    else setMode(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  }, []);
-
-  function toggle() {
-    const next: Mode = mode === "dark" ? "light" : "dark";
-    setMode(next);
-    document.documentElement.setAttribute("data-theme", next);
-    try {
-      localStorage.setItem("sfr-theme", next);
-    } catch {
-      /* stockage indisponible : le choix ne persistera pas */
-    }
-  }
-
+  const { mode, toggle } = useThemeMode();
   const isDark = mode === "dark";
   return (
     <button

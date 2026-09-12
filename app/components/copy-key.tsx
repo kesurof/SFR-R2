@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useToast } from "@/app/components/toast";
+import { App } from "antd";
 
 const WINDOW_SECONDS = 15 * 60;
 
 export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string }) {
-  const notify = useToast();
+  const { notification } = App.useApp();
   const [secret, setSecret] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -39,7 +39,7 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
       const body = (await response.json()) as { secret?: string; error?: string };
       if (body.secret) {
         setSecret(body.secret);
-        notify("warning", "Clé affichée", "Elle ne réapparaîtra pas. Copie-la maintenant.");
+        notification.warning({ message: "Clé affichée", description: "Elle ne réapparaîtra pas. Copie-la maintenant." });
       } else {
         setError(body.error ?? "Impossible d'afficher la clé.");
       }

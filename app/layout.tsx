@@ -6,9 +6,11 @@ import { auth, signOut } from "@/auth";
 import { isAccessApprover, isAdmin } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { isDiscordMember } from "@/lib/membership";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { AppShell, type NavItem } from "@/app/components/app-shell";
 import { FlashToasts } from "@/app/components/flash-toasts";
-import { ToastProvider } from "@/app/components/toast";
+import { ThemeProvider } from "@/app/components/theme-provider";
+import "antd/dist/reset.css";
 import "./globals.css";
 
 const sans = localFont({
@@ -69,14 +71,16 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
-        <ToastProvider>
-          <AppShell nav={nav} account={account} signOutAction={doSignOut}>
-            {children}
-          </AppShell>
-          <Suspense fallback={null}>
-            <FlashToasts />
-          </Suspense>
-        </ToastProvider>
+        <AntdRegistry>
+          <ThemeProvider>
+            <AppShell nav={nav} account={account} signOutAction={doSignOut}>
+              {children}
+            </AppShell>
+            <Suspense fallback={null}>
+              <FlashToasts />
+            </Suspense>
+          </ThemeProvider>
+        </AntdRegistry>
       </body>
     </html>
   );

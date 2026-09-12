@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { useToast } from "@/app/components/toast";
+import { App } from "antd";
 
 export function CreateClaimButton() {
   const [token, setToken] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const notify = useToast();
+  const { notification } = App.useApp();
 
   async function create() {
     setBusy(true);
@@ -15,17 +15,17 @@ export function CreateClaimButton() {
       const body = (await response.json()) as { token?: string; error?: string };
       if (body.token) {
         setToken(body.token);
-        notify("success", "Lien prêt", "Ouvre-le pour afficher ta clé.");
+        notification.success({ message: "Lien prêt", description: "Ouvre-le pour afficher ta clé." });
       } else {
-        notify(
-          "error",
-          "Lien indisponible",
-          body.error === "Aucun accès ne vous est attribué."
-            ? "Aucun accès n'a encore été préparé pour ton compte Discord."
-            : body.error === "Votre clé n'est pas encore disponible."
-              ? "Ta demande est acceptée, mais la clé n'a pas encore été ajoutée par l'équipe."
-              : "Réessaie dans quelques instants.",
-        );
+        notification.error({
+          message: "Lien indisponible",
+          description:
+            body.error === "Aucun accès ne vous est attribué."
+              ? "Aucun accès n'a encore été préparé pour ton compte Discord."
+              : body.error === "Votre clé n'est pas encore disponible."
+                ? "Ta demande est acceptée, mais la clé n'a pas encore été ajoutée par l'équipe."
+                : "Réessaie dans quelques instants.",
+        });
       }
     } finally {
       setBusy(false);

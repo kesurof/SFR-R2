@@ -1,5 +1,51 @@
 "use client";
+
+import { useState } from "react";
+import { Button, Descriptions, Drawer, Space, Typography } from "antd";
+import { EyeOutlined } from "@ant-design/icons";
 import { StatusBadge } from "@/app/components/status-badge";
-export function AccessRequestDetails({ request }: { request: { name: string; id: string; status: string; communities: string; motivations: string; selfHosting: string; discovery: string | null } }) {
-  return <><button type="button" className="btn ghost sm details-trigger" onClick={(event) => (event.currentTarget.nextElementSibling as HTMLDialogElement | null)?.showModal()}>Voir</button><dialog className="details-dialog" onClick={(event) => { if (event.target === event.currentTarget) (event.currentTarget as HTMLDialogElement).close(); }}><div className="details-sheet"><div className="details-head"><div className="details-head-main"><span className="eyebrow">Détails de la demande d’accès</span><h3>{request.name}</h3><div className="details-status"><StatusBadge status={request.status} /></div></div><button type="button" className="icon-btn" aria-label="Fermer" onClick={(event) => (event.currentTarget.closest("dialog") as HTMLDialogElement)?.close()}>×</button></div><div className="details-grid"><section><h4>Demandeur</h4><dl><dt>Discord ID</dt><dd className="mono">{request.id}</dd></dl></section><section className="details-wide"><div className="details-copy-grid"><div><h4>Discords et trackers</h4><p className="details-copy">{request.communities}</p></div><div><h4>Motivations</h4><p className="details-copy">{request.motivations}</p></div></div></section><section className="details-wide"><div className="details-copy-grid"><div><h4>Parcours self-hosting</h4><p className="details-copy">{request.selfHosting}</p></div><div><h4>Découverte</h4><p className="details-copy">{request.discovery || "Non renseigné"}</p></div></div></section></div></div></dialog></>;
+
+export function AccessRequestDetails({
+  request,
+}: {
+  request: { name: string; id: string; status: string; communities: string; motivations: string; selfHosting: string; discovery: string | null };
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button size="small" icon={<EyeOutlined />} onClick={() => setOpen(true)}>
+        Voir
+      </Button>
+      <Drawer title={request.name} open={open} onClose={() => setOpen(false)} width={560} destroyOnHidden>
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <StatusBadge status={request.status} />
+
+          <Descriptions
+            size="small"
+            column={1}
+            bordered
+            title="Demandeur"
+            items={[{ key: "id", label: "Discord ID", children: <Typography.Text code>{request.id}</Typography.Text> }]}
+          />
+
+          <div>
+            <Typography.Title level={5}>Discords et trackers</Typography.Title>
+            <Typography.Paragraph>{request.communities}</Typography.Paragraph>
+          </div>
+          <div>
+            <Typography.Title level={5}>Motivations</Typography.Title>
+            <Typography.Paragraph>{request.motivations}</Typography.Paragraph>
+          </div>
+          <div>
+            <Typography.Title level={5}>Parcours self-hosting</Typography.Title>
+            <Typography.Paragraph>{request.selfHosting}</Typography.Paragraph>
+          </div>
+          <div>
+            <Typography.Title level={5}>Découverte</Typography.Title>
+            <Typography.Paragraph>{request.discovery || "Non renseigné"}</Typography.Paragraph>
+          </div>
+        </Space>
+      </Drawer>
+    </>
+  );
 }

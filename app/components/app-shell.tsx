@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Breadcrumb, Button, Grid, Layout, Menu, theme as antdTheme } from "antd";
+import { HomeOutlined, KeyOutlined, MenuOutlined, SettingOutlined, UserAddOutlined } from "@ant-design/icons";
 import { ThemeToggle } from "./theme-toggle";
+import { useThemeMode } from "./theme-provider";
 
 export type NavItem = { href: string; label: string; icon: IconName };
 type IconName = "home" | "sponsor" | "access" | "admin";
 
 const ICONS: Record<IconName, ReactNode> = {
-  home: <path d="M3 11l9-8 9 8M5 10v10h14V10" />,
-  sponsor: <path d="M16 11a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0M19 8h4M21 6v4" />,
-  access: <path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM11 11l-7 7v3h3l1-1v-2h2v-2h2z" />,
-  admin: <path d="M9 11l3 3 8-8M4 12v7a1 1 0 0 0 1 1h14" />,
+  home: <HomeOutlined />,
+  sponsor: <UserAddOutlined />,
+  access: <KeyOutlined />,
+  admin: <SettingOutlined />,
 };
 
 const CRUMBS: [RegExp, string][] = [
@@ -24,6 +27,8 @@ const CRUMBS: [RegExp, string][] = [
   [/^\/claim\//, "Récupération de clé"],
   [/^\/admin/, "Administration"],
 ];
+
+const { Header, Sider, Content } = Layout;
 
 export function AppShell({
   nav,
@@ -37,91 +42,118 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.lg;
+  const { mode } = useThemeMode();
+  const { token } = antdTheme.useToken();
+  const [collapsed, setCollapsed] = useState(false);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (isMobile) setCollapsed(true);
+  }, [pathname, isMobile]);
 
   const crumb = CRUMBS.find(([re]) => re.test(pathname))?.[1] ?? "";
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+
+  const selectedKeys = useMemo(() => {
+    const matches = nav
+      .filter((item) =>
+        item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`),
+      )
+      .map((item) => item.href)
+      .sort((a, b) => b.length - a.length);
+    return [matches[0] ?? "/"];
+  }, [nav, pathname]);
+
+  const menuItems = nav.map((item) => ({
+    key: item.href,
+    icon: ICONS[item.icon],
+    label: <Link href={item.href}>{item.label}</Link>,
+  }));
 
   return (
-    <div className="app">
-      {open && <div className="rail-backdrop" onClick={() => setOpen(false)} />}
-      <aside className={`rail${open ? " open" : ""}`}>
-        <div className="rail-brand">
-          <div className="mark">S</div>
-          <div>
-            <b>StreamFusion Reborn</b>
-            <span>Accès R2 privé</span>
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth={isMobile ? 0 : 64}
+        collapsed={collapsed}
+        onCollapse={(value) => setCollapsed(value)}
+        trigger={null}
+        theme={mode}
+        width={248}
+        style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, minHeight: 64 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 9,
+              display: "grid",
+              placeItems: "center",
+              background: token.colorPrimary,
+              color: token.colorTextLightSolid,
+              fontWeight: 700,
+              flex: "none",
+            }}
+          >
+            S
           </div>
+          {!collapsed && (
+            <div style={{ lineHeight: 1.2 }}>
+              <div style={{ fontWeight: 700 }}>StreamFusion Reborn</div>
+              <div style={{ fontSize: 12, color: token.colorTextTertiary }}>Accès R2 privé</div>
+            </div>
+          )}
         </div>
-        <div className="rail-group">Navigation</div>
-        <nav aria-label="Navigation principale" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="nav-item"
-              aria-current={isActive(item.href) ? "page" : undefined}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                {ICONS[item.icon]}
-              </svg>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="rail-foot">
-          <div className="rail-group" style={{ paddingTop: 0 }}>
-            Accès
-          </div>
-          <div className="ecosystem" style={{ margin: 0, padding: "0 8px" }}>
-            <span className="chip">
-              <span className="dot" style={{ background: "#5865F2" }} />
-              Discord
-            </span>
-            <span className="chip">
-              <span className="dot" style={{ background: "var(--accent)" }} />
-              Stockage R2
-            </span>
-          </div>
-        </div>
-      </aside>
+        <Menu
+          theme={mode}
+          mode="inline"
+          selectedKeys={selectedKeys}
+          items={menuItems}
+          style={{ borderInlineEnd: "none" }}
+        />
+      </Sider>
 
-      <div className="main">
-        <header className="topbar">
-          <div className="topbar-left">
-            <button
-              type="button"
-              className="icon-btn menu-toggle"
-              aria-label="Ouvrir la navigation"
-              aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <span className="crumb">{crumb}</span>
-          </div>
-          <div className="topbar-right">
+      <Layout>
+        <Header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "0 16px",
+            background: token.colorBgContainer,
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          }}
+        >
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            aria-label="Ouvrir la navigation"
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed((value) => !value)}
+          />
+          <Breadcrumb
+            items={[
+              { title: <Link href="/">Accueil</Link> },
+              ...(crumb && crumb !== "Accueil" ? [{ title: crumb }] : []),
+            ]}
+          />
+          <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 12 }}>
             <ThemeToggle />
             {account ? (
-              <div className="account">
-                <span className="avatar" />
-                <span className="who">{account.name}</span>
+              <>
+                <span style={{ color: token.colorTextSecondary }}>{account.name}</span>
                 <form action={signOutAction}>
-                  <button className="link" type="submit">
+                  <Button type="link" htmlType="submit">
                     Déconnexion
-                  </button>
+                  </Button>
                 </form>
-              </div>
+              </>
             ) : null}
           </div>
-        </header>
-        <main className="canvas">{children}</main>
-      </div>
-    </div>
+        </Header>
+        <Content style={{ padding: 24 }}>{children}</Content>
+      </Layout>
+    </Layout>
   );
 }

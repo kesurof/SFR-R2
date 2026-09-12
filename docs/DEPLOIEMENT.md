@@ -67,8 +67,11 @@ docker compose logs -f
 ```
 
 Au démarrage, le conteneur applique les migrations Prisma sur `/data/sfr.db` puis
-sert l'application sur le port `3000`. Placer un reverse proxy (Traefik, Caddy,
-Nginx…) devant pour le TLS, ou utiliser Coolify (voir `COOLIFY.md`).
+sert l'application sur son port interne `3000`. Le Compose utilise `expose` et
+ne publie aucun port sur l'hôte. Placer un reverse proxy (Traefik, Caddy,
+Nginx…) sur le même réseau Docker pour l'accès HTTP/TLS, ou utiliser Coolify
+(voir `COOLIFY.md`) ; Coolify route alors chaque domaine vers le port interne
+`3000` sans mapping public.
 
 Le volume `sfr_data` conserve la base entre les mises à jour.
 

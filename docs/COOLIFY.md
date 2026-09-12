@@ -24,7 +24,7 @@ services:
   sfr-r2:
     image: ghcr.io/kesurof/sfr-r2-public:latest
     restart: unless-stopped
-    ports:
+    expose:
       - "3000"
     volumes:
       - sfr_data:/data
@@ -32,9 +32,18 @@ volumes:
   sfr_data:
 ```
 
+Le bloc `expose` indique uniquement le port interne du conteneur. Il ne réserve
+aucun port sur l'hôte : plusieurs ressources Coolify peuvent donc utiliser
+simultanément le port interne `3000`. Il ne faut pas ajouter de bloc `ports` ni
+de mapping public `3000:3000` ; le domaine et le reverse proxy HTTPS de Coolify
+routent vers le port interne `3000`.
+
 **Option B — Docker Image**
 
 *New Resource → Docker Image* → `ghcr.io/kesurof/sfr-r2-public:latest`, port interne `3000`.
+
+Dans l'interface Coolify, renseigner le port interne `3000` dans la configuration
+du service et laisser toute publication de port hôte désactivée.
 
 ## 3. Stockage persistant
 

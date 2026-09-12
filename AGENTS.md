@@ -1,5 +1,15 @@
 # Règles de travail du dépôt
 
+## Dépôt public et branche de référence
+
+- Le dépôt public de référence est
+  `https://github.com/kesurof/SFR-R2.git`.
+- Le travail local doit rester rattaché à ce dépôt via le remote `origin`.
+- La branche de livraison est `main`, qui doit suivre `origin/main`.
+- Avant un push, vérifier que les changements sont bien issus de ce dépôt et que
+  l'état local est aligné avec le remote public. Aucun ancien remote ne doit être
+  conservé comme cible de travail ou de livraison.
+
 ## Lire avant de modifier
 
 1. Consulter [docs/README.md](docs/README.md) puis le document correspondant au

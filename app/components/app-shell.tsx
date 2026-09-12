@@ -46,11 +46,17 @@ export function AppShell({
   const isMobile = !screens.lg;
   const { mode } = useThemeMode();
   const { token } = antdTheme.useToken();
+  // Dépliée par défaut sur grand écran, repliée sur mobile ; le breakpoint est
+  // attendu avant d'appliquer l'état pour ne pas replier au premier rendu.
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (isMobile) setCollapsed(true);
-  }, [pathname, isMobile]);
+    if (screens.lg) setCollapsed(false);
+  }, [screens.lg]);
+
+  useEffect(() => {
+    if (screens.lg !== undefined && isMobile) setCollapsed(true);
+  }, [pathname, isMobile, screens.lg]);
 
   const crumb = CRUMBS.find(([re]) => re.test(pathname))?.[1] ?? "";
 

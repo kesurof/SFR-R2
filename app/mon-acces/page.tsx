@@ -131,13 +131,10 @@ export default async function AccessPage() {
           </Card>
 
           <Card title="Où utiliser la clé">
-            <Paragraph type="secondary" style={{ marginBottom: 8, fontSize: 12.5 }}>
+            <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12.5 }}>
               Ouvre la configuration de <strong>StreamFusion Reborn</strong> et colle la clé dans le champ{" "}
               <Text code>R2 access key</Text>, puis valide.
             </Paragraph>
-            <Text type="secondary" style={{ fontSize: 11.5 }}>
-              Texte pas-à-pas à finaliser avec l&apos;équipe — emplacement réservé.
-            </Text>
           </Card>
         </Space>
       </div>

@@ -56,6 +56,11 @@ décision conserve son auteur, sa date et son commentaire. Une demande acceptée
 ensuite traitée par un administrateur pour créer la clé ; elle passe alors à
 `KEY_READY`. La révocation de la clé la fait passer à `KEY_REVOKED`.
 
+La vue d’instruction réutilise les informations Discord synchronisées pour afficher
+le pseudo serveur, le nom, l’identifiant, les rôles et les anciennetés du compte et
+de l’adhésion au serveur. Ces mêmes colonnes et filtres sont partagés avec la vue
+d’administration des utilisateurs.
+
 ### Parrainage et clé
 
 1. Un parrain autorisé soumet une demande pour un membre Discord, avec une

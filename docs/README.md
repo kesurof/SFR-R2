@@ -6,6 +6,7 @@ unique : il ne faut pas recopier une même information dans plusieurs sources.
 | Besoin | Document à consulter |
 | --- | --- |
 | Comprendre l'application telle qu'elle est livrée | [ARCHITECTURE-CURRENT.md](ARCHITECTURE-CURRENT.md) |
+| Identifier les composants et helpers réutilisables | [COMPONENTS-REUTILISABLES.md](COMPONENTS-REUTILISABLES.md) |
 | Installer, exécuter ou contribuer localement | [README.md](../README.md) |
 | Déployer avec Docker Compose | [DEPLOIEMENT.md](DEPLOIEMENT.md) |
 | Déployer avec Coolify | [COOLIFY.md](COOLIFY.md) |

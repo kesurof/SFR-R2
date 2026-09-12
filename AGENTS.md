@@ -10,6 +10,21 @@
 3. Ne jamais introduire de secret réel dans le dépôt, les tests, les documents ou
    les sorties de commande.
 
+Pour toute modification d'interface ou de logique de présentation :
+
+1. Consulter [docs/COMPONENTS-REUTILISABLES.md](docs/COMPONENTS-REUTILISABLES.md).
+2. Rechercher les composants, hooks et helpers proches avec `rg` avant de créer
+   du nouveau markup ou une nouvelle logique.
+3. Réutiliser le composant existant lorsqu'il couvre le besoin ; s'il existe déjà
+   au moins deux usages similaires, étendre le composant partagé avant de créer une
+   variante locale.
+4. Créer un nouveau composant uniquement lorsqu'aucune abstraction existante ne
+   convient clairement. Une abstraction ne doit pas réduire artificiellement le
+   nombre de fichiers : elle doit supprimer une duplication réelle et conserver une
+   API compréhensible.
+5. Ajouter ou mettre à jour l'entrée du catalogue lorsqu'un composant devient
+   réutilisable, et ajouter les tests ou vérifications adaptés à son contrat.
+
 ## Synchroniser code, tests et documentation
 
 Toute modification doit livrer ensemble les trois volets concernés :

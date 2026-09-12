@@ -36,13 +36,21 @@ export function SponsorshipTable({ rows }: { rows: SponsorshipRow[] }) {
       key: "createdAt",
       sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
       defaultSortOrder: "descend",
-      render: (createdAt: string) => <span className="mono faint">{new Date(createdAt).toLocaleDateString("fr-FR")}</span>,
+      render: (createdAt: string) => (
+        <Typography.Text type="secondary" code>
+          {new Date(createdAt).toLocaleDateString("fr-FR")}
+        </Typography.Text>
+      ),
     },
     {
       title: "Décision",
       dataIndex: "decidedAt",
       key: "decidedAt",
-      render: (decidedAt: string | null) => <span className="mono faint">{decidedAt ? new Date(decidedAt).toLocaleDateString("fr-FR") : "—"}</span>,
+      render: (decidedAt: string | null) => (
+        <Typography.Text type="secondary" code>
+          {decidedAt ? new Date(decidedAt).toLocaleDateString("fr-FR") : "—"}
+        </Typography.Text>
+      ),
     },
     {
       title: "Clé",
@@ -58,7 +66,7 @@ export function SponsorshipTable({ rows }: { rows: SponsorshipRow[] }) {
             </Typography.Text>
           </>
         ) : (
-          <span className="faint">Pas encore attribuée</span>
+          <Typography.Text type="secondary">Pas encore attribuée</Typography.Text>
         ),
     },
   ];

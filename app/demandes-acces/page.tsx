@@ -1,3 +1,7 @@
+import { Card, Space } from "antd";
+import Title from "antd/es/typography/Title";
+import Text from "antd/es/typography/Text";
+import Paragraph from "antd/es/typography/Paragraph";
 import { AccessRequestTable } from "@/app/demandes-acces/access-request-table";
 import { isAdmin, requireAccessApprover } from "@/lib/access";
 import { accessRequestStatus } from "@/lib/access-request-rules";
@@ -31,5 +35,20 @@ export default async function AccessRequestsPage({ searchParams }: { searchParam
     discovery: request.discoverySource,
   }));
   const focusedRequestStatus = accessRequestStatus(requests.find((item) => item.id === focusedRequestId)?.status);
-  return <div className="wrap"><div className="page-head"><span className="eyebrow">Instruction</span><h1>Demandes d’accès</h1><p>Examinez les demandes puis acceptez ou refusez-les. Seuls les administrateurs remettent les clés.</p></div><div className="panel"><AccessRequestTable requests={rows} admin={admin} focusedRequestId={focusedRequestId} focusedRequestStatus={focusedRequestStatus} initialStatus={accessRequestStatus(status)} /></div></div>;
+  return (
+    <Space direction="vertical" size="large" style={{ display: "flex" }}>
+      <div>
+        <Text type="secondary">Instruction</Text>
+        <Title level={2} style={{ margin: 0 }}>
+          Demandes d’accès
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          Examinez les demandes puis acceptez ou refusez-les. Seuls les administrateurs remettent les clés.
+        </Paragraph>
+      </div>
+      <Card>
+        <AccessRequestTable requests={rows} admin={admin} focusedRequestId={focusedRequestId} focusedRequestStatus={focusedRequestStatus} initialStatus={accessRequestStatus(status)} />
+      </Card>
+    </Space>
+  );
 }

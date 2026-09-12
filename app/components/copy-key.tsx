@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Alert, App, Button } from "antd";
+import { Alert, App, Button, Typography } from "antd";
 import { CheckOutlined, CloseCircleOutlined, CopyOutlined, WarningOutlined } from "@ant-design/icons";
 
 const WINDOW_SECONDS = 15 * 60;
@@ -69,9 +69,9 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
         <div className="ring" style={{ "--p": pct } as React.CSSProperties}>
           <span>{expired ? "00:00" : `${mm}:${ss}`}</span>
         </div>
-        <p className="faint" style={{ fontSize: 12 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
           Validité du lien
-        </p>
+        </Typography.Text>
 
         {secret ? (
           <>
@@ -91,31 +91,23 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
           </>
         ) : (
           <>
-            <p className="muted" style={{ fontSize: 13, margin: "var(--s4) 0" }}>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 13, margin: "16px 0" }}>
               {expired ? "Ce lien a expiré." : "Prêt à afficher la clé d'accès R2 ?"}
-            </p>
+            </Typography.Paragraph>
             <Button type="primary" loading={busy} disabled={expired} onClick={reveal}>
               Afficher ma clé une seule fois
             </Button>
-            {error && (
-              <Alert
-                type="error"
-                showIcon
-                icon={<CloseCircleOutlined />}
-                message={error}
-                style={{ marginTop: 16 }}
-              />
-            )}
+            {error && <Alert type="error" showIcon icon={<CloseCircleOutlined />} message={error} style={{ marginTop: 16 }} />}
           </>
         )}
       </div>
-      <p className="faint" style={{ fontSize: 12, textAlign: "center", marginTop: "var(--s4)" }}>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12, textAlign: "center", marginTop: 16 }}>
         Après affichage, ce lien devient inactif. Retour à{" "}
-        <Link className="mono" style={{ color: "var(--accent)" }} href="/mon-acces">
+        <Link style={{ fontFamily: "var(--font-mono)", color: "var(--ant-color-primary)" }} href="/mon-acces">
           Mon accès
         </Link>
         .
-      </p>
+      </Typography.Paragraph>
     </div>
   );
 }

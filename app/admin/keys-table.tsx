@@ -51,7 +51,7 @@ export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focu
       key: "replacement",
       render: (_, row) => {
         const replacement = row.replacementRequest;
-        if (!replacement) return <span className="faint">—</span>;
+        if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
         const color = replacement.status === "PENDING" ? "gold" : replacement.status === "COMPLETED" ? "green" : "default";
         const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
         return (
@@ -120,7 +120,7 @@ export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focu
       locale={{ emptyText: "Aucune clé enregistrée." }}
       onRow={(row) =>
         row.replacementRequest?.id === focusedReplacementId
-          ? { style: { outline: "2px solid var(--accent)", outlineOffset: -2 } }
+          ? { style: { outline: "2px solid var(--ant-color-primary)", outlineOffset: -2 } }
           : {}
       }
     />

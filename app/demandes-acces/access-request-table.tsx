@@ -103,7 +103,11 @@ export function AccessRequestTable({
       key: "createdAt",
       sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
       defaultSortOrder: "descend",
-      render: (createdAt: string) => <span className="mono faint">{new Date(createdAt).toLocaleDateString("fr-FR")}</span>,
+      render: (createdAt: string) => (
+        <Typography.Text type="secondary" code>
+          {new Date(createdAt).toLocaleDateString("fr-FR")}
+        </Typography.Text>
+      ),
     },
     {
       title: "Décision",
@@ -120,7 +124,7 @@ export function AccessRequestTable({
             </Typography.Text>
           </>
         ) : (
-          <span className="faint">—</span>
+          <Typography.Text type="secondary">—</Typography.Text>
         ),
     },
     {
@@ -196,7 +200,7 @@ export function AccessRequestTable({
         scroll={{ x: "max-content" }}
         locale={{ emptyText: "Aucune demande correspondante." }}
         onRow={(row) =>
-          row.id === focusedRequestId ? { style: { outline: "2px solid var(--accent)", outlineOffset: -2 } } : {}
+          row.id === focusedRequestId ? { style: { outline: "2px solid var(--ant-color-primary)", outlineOffset: -2 } } : {}
         }
       />
     </>

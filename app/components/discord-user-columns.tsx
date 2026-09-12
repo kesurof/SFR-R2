@@ -1,6 +1,6 @@
 "use client";
 
-import type { TableColumnsType } from "antd";
+import { Space, Tag, Typography, type TableColumnsType } from "antd";
 import { accountCreatedAt, formatAge } from "@/lib/member-age";
 import { compareDiscordUsers, parseDiscordRoles, type DiscordUserTableRow } from "@/lib/discord-user-columns";
 
@@ -39,7 +39,11 @@ export function buildDiscordUserColumns<RowT extends object>({
     columns.push({
       title: "Discord ID",
       key: "discordId",
-      render: (_, row) => <span className="mono faint">{getUser(row).discordId}</span>,
+      render: (_, row) => (
+        <Typography.Text type="secondary" code>
+          {getUser(row).discordId}
+        </Typography.Text>
+      ),
     });
   }
   if (show("roles")) {
@@ -49,15 +53,13 @@ export function buildDiscordUserColumns<RowT extends object>({
       render: (_, row) => {
         const roles = parseDiscordRoles(getUser(row).discordRoles);
         return roles.length ? (
-          <div className="rolechips">
+          <Space size={4} wrap>
             {roles.map((role) => (
-              <span className="rolechip" key={role}>
-                {role}
-              </span>
+              <Tag key={role}>{role}</Tag>
             ))}
-          </div>
+          </Space>
         ) : (
-          <span className="faint">—</span>
+          <Typography.Text type="secondary">—</Typography.Text>
         );
       },
     });
@@ -71,8 +73,8 @@ export function buildDiscordUserColumns<RowT extends object>({
         const joinedAt = getUser(row).joinedAt;
         const joined = joinedAt ? new Date(joinedAt) : null;
         return (
-          <span className="faint" title={joined?.toLocaleDateString("fr-FR")}>
-            {formatAge(joined)}
+          <span title={joined?.toLocaleDateString("fr-FR")}>
+            <Typography.Text type="secondary">{formatAge(joined)}</Typography.Text>
           </span>
         );
       },
@@ -86,8 +88,8 @@ export function buildDiscordUserColumns<RowT extends object>({
       render: (_, row) => {
         const created = accountCreatedAt(getUser(row).discordId);
         return (
-          <span className="faint" title={created?.toLocaleDateString("fr-FR")}>
-            {formatAge(created)}
+          <span title={created?.toLocaleDateString("fr-FR")}>
+            <Typography.Text type="secondary">{formatAge(created)}</Typography.Text>
           </span>
         );
       },

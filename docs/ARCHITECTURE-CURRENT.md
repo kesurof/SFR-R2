@@ -9,14 +9,15 @@ SFR-R2 est un portail privé pour remettre des clés d'accès au stockage R2 de
 StreamFusion Reborn. C'est une application unique Next.js 16 avec App Router,
 rendue en image Docker autonome. Elle utilise SQLite, piloté par Prisma, et Discord
 pour l'authentification, la vérification d'appartenance et la synchronisation des
-membres.
+membres. L'interface repose sur Ant Design 6 (thème clair/sombre, locale `fr_FR`)
+et les Server Actions sont validées et typées avec `next-safe-action` et Zod.
 
 Les frontières principales sont les suivantes :
 
 - `app/` porte les pages, composants, actions serveur et routes HTTP ;
 - `auth.ts` établit la session Auth.js via OAuth Discord ;
 - `lib/` concentre les règles métier, l'accès aux données, les intégrations Discord,
-  le chiffrement, la configuration et les protections transversales ;
+  le chiffrement, la configuration, les schémas d'actions et le client d'actions typées ;
 - `prisma/schema.prisma` et `prisma/migrations/` définissent et font évoluer le
   schéma SQLite ;
 - Docker démarre le serveur Next.js après avoir appliqué les migrations au volume
@@ -179,5 +180,6 @@ GHCR privée multi-architecture `amd64` et `arm64`, puis crée le manifeste asso
 
 Les tests Vitest couvrent les règles de workflow, le chiffrement, la validation de
 configuration, le rate-limit, l'appartenance Discord, les paramètres de
-notifications, les snowflakes Discord et le proxy CSP. Les commandes de
+notifications, les snowflakes Discord, le proxy CSP, le thème Ant Design et les
+schémas d'actions. Les commandes de
 référence sont `npm test`, `npm run typecheck` et, lorsque pertinent, `npm run build`.

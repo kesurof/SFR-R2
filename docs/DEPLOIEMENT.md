@@ -54,6 +54,7 @@ cp .env.example .env
 | `DISCORD_INVITE_URL` | non | lien affiché aux comptes hors serveur |
 | `TRUST_PROXY` | non | `true` si un proxy renseigne `X-Forwarded-For` |
 | `RATE_LIMIT_*` | non | quotas du lien de récupération (défauts raisonnables) |
+| `SFR_IMAGE_TAG` | non | tag d'image Docker : vide/`latest` en production, `dev` pour l'environnement de test |
 
 Après le premier déploiement, créer un webhook entrant Discord dans le salon cible,
 copier son URL, puis ouvrir `/admin?view=settings` et la renseigner. L’URL est

@@ -1,6 +1,8 @@
 services:
   sfr-r2:
-    image: ghcr.io/kesurof/sfr-r2-public:latest
+    # Tag d'image : `latest` par défaut (production), `dev` pour l'environnement
+    # de test alimenté par les pushs sur la branche `dev`.
+    image: ghcr.io/kesurof/sfr-r2-public:${SFR_IMAGE_TAG:-latest}
     # Pour construire l'image localement au lieu de la tirer du registre :
     #   décommenter la ligne ci-dessous puis `docker compose up -d --build`
     # build: .

@@ -22,7 +22,7 @@ L'image `ghcr.io/kesurof/sfr-r2-public` est privée.
 ```yaml
 services:
   sfr-r2:
-    image: ghcr.io/kesurof/sfr-r2-public:latest
+    image: ghcr.io/kesurof/sfr-r2-public:${SFR_IMAGE_TAG:-latest}
     restart: unless-stopped
     expose:
       - "3000"
@@ -85,7 +85,25 @@ Puis **reporter cette URL** :
 **Deploy**. Le conteneur applique les migrations puis démarre. Le *healthcheck*
 intégré (`GET /`) permet à Coolify de suivre l'état.
 
-## 7. Mises à jour
+## 7. Environnement de test (`dev`) et production
 
-À chaque publication d'un nouveau `:latest` (push sur `main` du dépôt) :
+La CI publie deux tags d'image :
+
+- `ghcr.io/kesurof/sfr-r2-public:latest` — push sur `main` (production) ;
+- `ghcr.io/kesurof/sfr-r2-public:dev` — push sur `dev` (test).
+
+Le tag utilisé par Coolify est piloté par la variable `SFR_IMAGE_TAG` lue par
+`docker-compose.yml` (`latest` par défaut). Pour un environnement de test isolé :
+
+1. **Source → Branch** : `dev` ;
+2. **Environment Variables** : `SFR_IMAGE_TAG=dev` ;
+3. **Deploy**.
+
+La production reste sur `main` sans `SFR_IMAGE_TAG` (donc `:latest`). Les deux
+environnements partagent le même `docker-compose.yml` : aucune divergence de
+fichier à maintenir entre les branches.
+
+## 8. Mises à jour
+
+À chaque publication d'une image (`latest` sur `main`, `dev` sur `dev`) :
 **Redeploy** dans Coolify — ou brancher un webhook GitHub → Coolify pour l'automatiser.

@@ -93,9 +93,8 @@ export const rejectKeyReplacementSchema = zfd.formData({
 }).superRefine((value, ctx) => addBusinessIssue(ctx, keyReplacementDecisionError(value.decisionComment)));
 
 export const manualAccessFormSchema = zfd.formData({
-  discordId: zfd.text(z.string().trim()),
+  discordId: zfd.text(z.string().trim().optional()),
   username: zfd.text(z.string().trim()),
-  serverNickname: zfd.text(z.string().trim().optional()),
   secret: zfd.text(z.string()),
 }).superRefine((value, ctx) =>
   addBusinessIssue(
@@ -103,7 +102,6 @@ export const manualAccessFormSchema = zfd.formData({
     manualAccessInputError({
       discordId: value.discordId,
       username: value.username,
-      serverNickname: value.serverNickname,
       secret: value.secret,
     }),
   ),

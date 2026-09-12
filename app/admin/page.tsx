@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert, Button, Card, Checkbox, Col, Input, Menu, Row, Space, Statistic, Tag } from "antd";
+import { Button, Card, Checkbox, Col, Input, Menu, Row, Space, Statistic, Tag } from "antd";
 import Title from "antd/es/typography/Title";
 import Text from "antd/es/typography/Text";
 import Paragraph from "antd/es/typography/Paragraph";
@@ -8,17 +8,19 @@ import { clearAccessRequestWebhook, updateNotificationSettings } from "@/app/act
 import { UserManagement } from "@/app/admin/user-management";
 import { RequestTable } from "@/app/admin/request-table";
 import { KeysTable, type KeyRow } from "@/app/admin/keys-table";
+import { RestoreAccessForm } from "@/app/admin/restore-access-form";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
 import { FormField } from "@/app/components/form-field";
 import { identity, isAdmin } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { getNotificationSettings } from "@/lib/settings";
 
-type View = "requests" | "users" | "keys" | "settings";
+type View = "requests" | "users" | "keys" | "restore" | "settings";
 const VIEWS: { id: View; label: string }[] = [
   { id: "requests", label: "Demandes" },
   { id: "users", label: "Utilisateurs" },
   { id: "keys", label: "Clés actives" },
+  { id: "restore", label: "Restaurer un accès" },
   { id: "settings", label: "Configuration" },
 ];
 
@@ -83,6 +85,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const pendingNotifications = notificationStats.find((item) => item.status === "PENDING")?._count._all ?? 0;
   const failedNotifications = notificationStats.find((item) => item.status === "FAILED")?._count._all ?? 0;
   const settings = view === "settings" ? await getNotificationSettings() : null;
+  const restoreUsers =
+    view === "restore"
+      ? await prisma.user.findMany({
+          select: { discordId: true, username: true, serverNickname: true },
+          orderBy: { username: "asc" },
+          take: 1000,
+        })
+      : [];
 
   // Historique d'audit des demandes affichées — une requête par lot, puis un index en mémoire.
   const audits = requests.length ? await fetchAudits(requests.map((request) => request.id)) : [];
@@ -235,6 +245,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
       {view === "users" && <UserManagement />}
 
+      {view === "restore" && (
+        <Card title="Restaurer un accès">
+          <Paragraph type="secondary" style={{ marginTop: -8 }}>
+            Recherchez un membre actuellement sur le serveur Discord, puis attribuez-lui une clé active.
+          </Paragraph>
+          <RestoreAccessForm users={restoreUsers} />
+        </Card>
+      )}
+
       {view === "keys" && (
         <Card
           title="Historique des clés"
@@ -303,14 +322,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     {settings.accessRequestWebhookConfigured && <Tag color="green">Configuré</Tag>}
                   </Space>
                 </FormField>
-              </Col>
-              <Col span={24}>
-                <Alert
-                  type="info"
-                  showIcon
-                  message="À savoir"
-                  description="Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation."
-                />
               </Col>
               <Col span={24}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>

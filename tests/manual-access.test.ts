@@ -3,20 +3,25 @@ import { decrypt } from "../lib/crypto";
 import { accessKeySecretError } from "../lib/access-key-rules";
 import { manualAccessInputError } from "../lib/manual-access-rules";
 
-const prismaMock = vi.hoisted(() => ({ $transaction: vi.fn() }));
+const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
+  user: { findMany: vi.fn() },
+}));
+const membershipMock = vi.hoisted(() => ({ isDiscordMember: vi.fn(async () => true) }));
+
 vi.mock("../lib/prisma", () => ({ prisma: prismaMock }));
+vi.mock("../lib/membership", () => membershipMock);
 
 import { restoreManualAccess } from "../lib/manual-access-workflow";
 
 const input = {
   discordId: "100000000000000001",
   username: "Utilisateur restauré",
-  serverNickname: "Pseudo restauré",
   secret: "abcd-cle-restauree-wxyz",
 };
 
 function transactionFor({ user, activeKey = null, failOnKeyCreate = false }: { user: Record<string, unknown> | null; activeKey?: { id: string } | null; failOnKeyCreate?: boolean }) {
-  const createdUser = { id: "user-created", discordId: input.discordId, username: input.username, serverNickname: input.serverNickname };
+  const createdUser = { id: "user-created", discordId: input.discordId, username: input.username };
   const createdKey = { id: "key-created", userId: user?.id ?? createdUser.id, prefix: "abcd", suffix: "wxyz" };
   const tx = {
     user: {
@@ -37,10 +42,13 @@ describe("règles de restauration manuelle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+    prismaMock.user.findMany.mockResolvedValue([]);
+    membershipMock.isDiscordMember.mockResolvedValue(true);
   });
 
   it("valide l’identité et la clé", () => {
     expect(manualAccessInputError(input)).toBeNull();
+    expect(manualAccessInputError({ ...input, discordId: "" })).toBeNull();
     expect(manualAccessInputError({ ...input, discordId: "123" })).toMatch(/Discord ID/);
     expect(manualAccessInputError({ ...input, username: " " })).toMatch(/nom Discord/);
     expect(manualAccessInputError({ ...input, secret: " " })).toMatch(/clé/);
@@ -54,7 +62,7 @@ describe("règles de restauration manuelle", () => {
 
     expect(result.user).toEqual(createdUser);
     expect(result.key).toEqual(createdKey);
-    expect(tx.user.create).toHaveBeenCalledWith({ data: { discordId: input.discordId, username: input.username, serverNickname: input.serverNickname } });
+    expect(tx.user.create).toHaveBeenCalledWith({ data: { discordId: input.discordId, username: input.username, serverNickname: null } });
     expect(tx.accessKey.findFirst).toHaveBeenCalledWith({ where: { userId: createdUser.id, status: "ACTIVE" }, select: { id: true } });
     expect(tx.auditLog.create).toHaveBeenCalledTimes(2);
     const auditPayloads = tx.auditLog.create.mock.calls.map(([call]) => JSON.stringify(call));
@@ -87,6 +95,41 @@ describe("règles de restauration manuelle", () => {
 
     await expect(restoreManualAccess(input, "200000000000000002")).rejects.toThrow(/persistance/);
     expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("résout le Discord ID par nom quand il est absent", async () => {
+    prismaMock.user.findMany.mockResolvedValue([{ discordId: input.discordId }]);
+    const existing = { id: "existing-user", discordId: input.discordId, username: input.username, serverNickname: null };
+    const { tx } = transactionFor({ user: existing });
+
+    await restoreManualAccess({ ...input, discordId: "" }, "200000000000000002");
+
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith({
+      where: { OR: [{ username: input.username }, { serverNickname: input.username }] },
+      take: 2,
+      select: { discordId: true },
+    });
+    expect(tx.user.findUnique).toHaveBeenCalledWith({ where: { discordId: input.discordId } });
+  });
+
+  it("refuse si aucun membre ne correspond au nom", async () => {
+    prismaMock.user.findMany.mockResolvedValue([]);
+
+    await expect(restoreManualAccess({ ...input, discordId: "" }, "200000000000000002")).rejects.toThrow(/Aucun membre/);
+    expect(membershipMock.isDiscordMember).not.toHaveBeenCalled();
+  });
+
+  it("refuse si plusieurs membres correspondent au nom", async () => {
+    prismaMock.user.findMany.mockResolvedValue([{ discordId: "100000000000000001" }, { discordId: "100000000000000002" }]);
+
+    await expect(restoreManualAccess({ ...input, discordId: "" }, "200000000000000002")).rejects.toThrow(/Plusieurs membres/);
+  });
+
+  it("refuse un membre absent du serveur Discord", async () => {
+    membershipMock.isDiscordMember.mockResolvedValue(false);
+
+    await expect(restoreManualAccess(input, "200000000000000002")).rejects.toThrow(/serveur Discord/);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 });
 

@@ -209,8 +209,20 @@ async function recoverStuckNotifications() {
   });
 }
 
+/** Abandonne les notifications en attente : une notification désactivée ne doit jamais être reprise. */
+export async function discardPendingNotifications() {
+  const result = await prisma.discordNotification.updateMany({
+    where: { status: "PENDING" },
+    data: { status: "FAILED", lastErrorCode: "NOTIFICATIONS_DISABLED", nextAttemptAt: null },
+  });
+  return result.count;
+}
+
 export async function processPendingNotifications() {
-  if (!(await getNotificationSettings()).discordNotificationsEnabled) return;
+  if (!(await getNotificationSettings()).discordNotificationsEnabled) {
+    await discardPendingNotifications();
+    return;
+  }
 
   await recoverStuckNotifications();
 

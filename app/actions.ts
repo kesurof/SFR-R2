@@ -5,7 +5,7 @@ import { audit, ensureUser, identity, requireAdmin, requireMember } from "@/lib/
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/crypto";
 import { decideRequest, issueClaim, revokeKey, saveKey, submitRequest } from "@/lib/workflow";
-import { queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
+import { discardPendingNotifications, queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
 import { getNotificationSettings, parseNotificationSettingsInput } from "@/lib/settings";
 import { decideAccessRequest, saveAccessRequestKey, submitAccessRequest } from "@/lib/access-request-workflow";
 import { rejectKeyReplacement, replaceKey, requestKeyReplacement } from "@/lib/key-replacement-workflow";
@@ -152,9 +152,11 @@ export const updateNotificationSettings = formAction(
     const next = { discordNotificationsEnabled: parsed.discordNotificationsEnabled, notificationWorkerIntervalSeconds: parsed.notificationWorkerIntervalSeconds, accessRequestWebhookEncrypted: webhookEncrypted };
     try {
       await prisma.appSettings.upsert({ where: { id: "global" }, update: { ...next, updatedByDiscordId: ctx.actor.discordId }, create: { id: "global", ...next, updatedByDiscordId: ctx.actor.discordId } });
+      const discardedPending = next.discordNotificationsEnabled ? 0 : await discardPendingNotifications();
       await audit("NOTIFICATION_SETTINGS_UPDATED", ctx.actor.discordId, undefined, undefined, undefined, {
         previous: { discordNotificationsEnabled: current.discordNotificationsEnabled, notificationWorkerIntervalSeconds: current.notificationWorkerIntervalSeconds, accessRequestWebhookConfigured: current.accessRequestWebhookConfigured },
         next: { discordNotificationsEnabled: next.discordNotificationsEnabled, notificationWorkerIntervalSeconds: next.notificationWorkerIntervalSeconds, accessRequestWebhookConfigured: Boolean(next.accessRequestWebhookEncrypted) },
+        discardedPendingNotifications: discardedPending,
         result: "success",
       });
       wakeNotificationWorker();
@@ -250,13 +252,12 @@ export const restoreManualAccessAction = formAction(
       {
         discordId: parsedInput.discordId,
         username: parsedInput.username,
-        serverNickname: parsedInput.serverNickname,
         secret: parsedInput.secret,
       },
       ctx.actor.discordId,
     );
     revalidatePath("/admin");
-    redirect("/admin?view=users&notice=manual_access_restored");
+    redirect("/admin?view=restore&notice=manual_access_restored");
   }),
-  (result) => `/admin?view=users&error=${encodeURIComponent(errorMessage(result, "Impossible de restaurer cet accès."))}`,
+  (result) => `/admin?view=restore&error=${encodeURIComponent(errorMessage(result, "Impossible de restaurer cet accès."))}`,
 );

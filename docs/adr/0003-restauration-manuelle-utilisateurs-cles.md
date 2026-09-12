@@ -1,6 +1,6 @@
 # ADR 0003 — Restauration manuelle des utilisateurs et des clés
 
-Statut : accepté
+Statut : remplacé par ADR 0007
 
 ## Contexte
 

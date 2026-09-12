@@ -1,13 +1,34 @@
 import { createAccessKey } from "@/lib/access-key";
+import { isDiscordMember } from "@/lib/membership";
 import { manualAccessInputError, type ManualAccessInput } from "@/lib/manual-access-rules";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Restaure l'accès d'un membre actuellement présent sur le serveur Discord.
+ * Le Discord ID est déduit de la recherche par nom/pseudo s'il n'est pas fourni.
+ */
 export async function restoreManualAccess(input: ManualAccessInput, actorDiscordId: string) {
   const error = manualAccessInputError(input);
   if (error) throw new Error(error);
 
-  const discordId = input.discordId.trim();
   const username = input.username.trim();
+  let discordId = input.discordId?.trim() ?? "";
+
+  if (!discordId) {
+    const matches = await prisma.user.findMany({
+      where: { OR: [{ username }, { serverNickname: username }] },
+      take: 2,
+      select: { discordId: true },
+    });
+    if (matches.length === 0) throw new Error("Aucun membre ne correspond à ce nom.");
+    if (matches.length > 1) throw new Error("Plusieurs membres correspondent à ce nom ; précisez la recherche.");
+    discordId = matches[0].discordId;
+  }
+
+  if (!(await isDiscordMember(discordId))) {
+    throw new Error("Ce membre n’est pas actuellement sur le serveur Discord.");
+  }
+
   const serverNickname = input.serverNickname?.trim() || null;
 
   return prisma.$transaction(async (tx) => {

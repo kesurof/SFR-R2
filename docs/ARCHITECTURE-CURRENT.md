@@ -95,14 +95,16 @@ demande `REJECTED` et conserve le motif de décision.
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.
 
-Après une perte de données, un administrateur peut restaurer un accès depuis
-`/admin?view=users` en saisissant un Discord ID, un nom, un pseudo serveur facultatif
-et la clé complète. L'utilisateur est créé s'il est absent ; son profil existant
-n'est pas écrasé. Une clé active déjà présente bloque la restauration. La nouvelle
-clé est active immédiatement, datée au moment de la restauration et enregistrée avec
-les événements d'audit `USER_CREATED_MANUALLY` et
-`ACCESS_KEY_RESTORED_MANUALLY` selon le cas. La valeur en clair n'est jamais
-conservée dans un audit ou un journal.
+Après une perte de données, un administrateur peut restaurer un accès depuis l'onglet
+`/admin?view=restore` en recherchant un membre par nom Discord ou pseudo serveur (le
+Discord ID est déduit de la sélection, jamais saisi) et en renseignant la clé complète.
+Le membre doit être actuellement présent sur le serveur Discord ; sinon la restauration
+est refusée. Sans sélection, le nom saisi est résolu par correspondance exacte unique
+sur le nom Discord ou le pseudo serveur. Le profil d'un utilisateur existant n'est pas
+écrasé. Une clé active déjà présente bloque la restauration. La nouvelle clé est active
+immédiatement, datée au moment de la restauration et enregistrée avec les événements
+d'audit `USER_CREATED_MANUALLY` et `ACCESS_KEY_RESTORED_MANUALLY` selon le cas. La
+valeur en clair n'est jamais conservée dans un audit ou un journal.
 
 ### Récupération de clé
 
@@ -143,6 +145,11 @@ fait pas échouer l'action métier qui les déclenche. Le worker démarré par
 en attente, évite les doublons par réservation atomique, reprend les envois bloqués
 et abandonne après trois échecs avec délais de reprise.
 
+Lorsque les notifications sont désactivées, aucune nouvelle notification n'est mise
+en file et les éléments encore en attente sont abandonnés (`NOTIFICATIONS_DISABLED`)
+au lieu d'être repris à la réactivation : les notifications ne sont émises que
+lorsqu'elles sont activées.
+
 Les nouvelles demandes d’accès alertent le webhook Discord configuré dans les
 paramètres globaux de l’application avec un embed contenant le pseudo, la date et
 un lien direct vers la demande, sans exposer ses réponses. Le demandeur est notifié
@@ -182,11 +189,12 @@ L'image Docker multi-étape utilise Node 22 Alpine, produit la sortie Next.js
 rejoue les fichiers SQL de migration dans l'ordre avant de lancer `server.js`.
 
 La CI GitHub exécute `npm ci`, `npm test`, `npm run typecheck` et `npm run build`
-sur les push et pull requests vers `main`. Hors pull request, elle publie l'image
-GHCR privée multi-architecture `amd64` et `arm64`, puis crée le manifeste associé.
+sur les push vers `main` et `dev` et sur les pull requests vers `main`. Hors pull
+request, elle publie l'image GHCR privée multi-architecture `amd64` et `arm64`, puis
+crée le manifeste associé : le tag `latest` pour `main`, le tag `dev` pour `dev`.
 
 Les tests Vitest couvrent les règles de workflow, le chiffrement, la validation de
-configuration, le rate-limit, l'appartenance Discord, les paramètres de
-notifications, les snowflakes Discord, le proxy CSP, le thème Ant Design, les
+configuration, le rate-limit, l'appartenance Discord, les paramètres et le cycle des
+notifications Discord, les snowflakes Discord, le proxy CSP, le thème Ant Design, les
 schémas d'actions et les attributs anti-gestionnaires de mots de passe. Les commandes de
 référence sont `npm test`, `npm run typecheck` et, lorsque pertinent, `npm run build`.

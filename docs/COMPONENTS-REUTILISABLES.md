@@ -1,58 +1,124 @@
-# Composants et helpers réutilisables
+# Composants, hooks et helpers réutilisables
 
-Ce catalogue décrit les briques existantes à rechercher avant d'ajouter du
-markup, une interaction ou une logique de présentation. Il distingue les briques
-génériques, les briques partagées dans un domaine et les composants propres à une
-fonctionnalité.
+Ce catalogue décrit les briques réellement présentes dans le dépôt. Il constitue
+le premier point de recherche avant d'ajouter du markup, une interaction ou une
+logique de présentation.
 
-La liste doit être mise à jour lorsqu'un composant devient partagé, qu'une API
-change ou qu'un composant n'est plus réutilisable. Les chemins sont relatifs à la
-racine du dépôt.
+Les éléments sont classés selon leurs usages réels, et non selon leur emplacement
+dans `app/components` ou `lib`. Une abstraction n'est pertinente que si elle
+supprime une duplication réelle, possède une responsabilité claire et simplifie
+la maintenance de ses consommateurs.
 
-## Briques génériques
+Les chemins sont relatifs à la racine du dépôt. La colonne « Tests » ne présente
+que les tests réellement associés ; `typecheck` et `build` sont indiqués comme
+des vérifications indirectes lorsqu'aucun test dédié n'existe.
 
-| Composant/helper | Chemin | Responsabilité et API principale | Usages actuels | Contraintes | Tests associés |
-| --- | --- | --- | --- | --- | --- |
-| `AppShell` | `app/components/app-shell.tsx` | Structure globale de l'application, navigation, compte et fil d'Ariane. Props : `nav`, `account`, `signOutAction`, `children`. | `app/layout.tsx` | Réserver à la structure globale ; ne pas y placer de logique métier de page. | `npm run typecheck`, `npm run build` |
-| `ConfirmSubmit` | `app/components/confirm-submit.tsx` | Confirmation accessible avant soumission destructive d'un formulaire. Props : `title`, `message`, `confirmLabel`, `className`, `name`, `value`. | Administration des demandes et du webhook. | Doit être placé dans le formulaire concerné ; préserver l'annulation et le clavier. | `npm run build` |
-| `PendingButton` | `app/components/pending-button.tsx` | Bouton de formulaire basé sur `useFormStatus`, désactivé pendant l'action. Props : `children`, `pendingLabel`, `className`, `name`, `value`. | Demande d'accès, parrainage, synchronisation Discord. | Doit être descendant d'un formulaire utilisant une action serveur. | `npm run build` |
-| `StatusBadge` | `app/components/status-badge.tsx` | Présentation uniforme des statuts métier. Props : `status`. | Demandes d'accès, parrainage, récupération de clé. | Ajouter les nouveaux statuts dans `LABELS` plutôt que de recréer un badge local. | `npm run typecheck`, `npm run build` |
-| `ToastProvider` / `useToast` | `app/components/toast.tsx` | Notifications globales avec types `success`, `error`, `warning`, `info`. | Layout, notifications flash, récupération de clé, création de lien. | Le provider doit rester monté dans le layout ; utiliser `aria-live` et ne pas détourner le focus. | `npm run build` |
-| `FlashToasts` | `app/components/flash-toasts.tsx` | Traduit les paramètres de redirection (`notice`, `error`, `success`) en notifications via `useToast`. | `app/layout.tsx`. | Réserver aux messages issus des actions serveur ; ajouter les nouveaux codes dans `NOTICES`. | `npm run build` |
-| `ThemeToggle` | `app/components/theme-toggle.tsx` | Bascule clair/sombre persistée dans `localStorage`. | `AppShell`. | Ne pas créer de bouton de thème local ; conserver le respect du thème système initial. | `npm run build` |
-| `usePersistentState` | `app/components/use-persistent-state.ts` | État client persistant en `sessionStorage`, réhydraté après montage. API : `usePersistentState(key, initial)`. | Filtres des tables d'administration et des demandes d'accès. | Versionner la clé lorsqu'une forme de données change ; ne pas l'utiliser pour des secrets. | `npm run typecheck`, `npm run build` |
+## Composants et hooks génériques
+
+| Élément | Type | Chemin | Responsabilité | API principale | Usages actuels | Contraintes | Tests |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `AppShell` | Composant partagé | `app/components/app-shell.tsx` | Structure globale, navigation, compte et fil d'Ariane. | `nav`, `account`, `signOutAction`, `children` | `app/layout.tsx` | Réserver à la structure globale ; ne pas y placer de logique métier de page. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `ConfirmSubmit` | Composant partagé | `app/components/confirm-submit.tsx` | Confirmation accessible avant la soumission d'une action destructive. | `title`, `message`, `confirmLabel`, `className`, `name`, `value`, `children` | `app/admin/request-table.tsx`, `app/admin/page.tsx` | Doit rester dans le formulaire concerné et préserver l'annulation, le clavier et le `name/value` transmis à la Server Action. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `PendingButton` | Composant partagé | `app/components/pending-button.tsx` | Bouton de soumission désactivé pendant une Server Action. | `children`, `pendingLabel`, `className`, `name`, `value` | Demande d'accès, parrainage, `/mon-acces`, administration et synchronisation Discord. | Doit être descendant du formulaire concerné et utiliser `useFormStatus`. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `StatusBadge` | Composant partagé | `app/components/status-badge.tsx` | Affichage uniforme des statuts métier et de leur libellé. | `status` | Demandes d'accès, parrainage, détails d'administration et `/mon-acces`. | Ajouter les statuts dans `LABELS` plutôt que recréer un badge local ; les statuts inconnus gardent leur valeur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `ToastProvider` / `useToast` | Composant et hook partagés | `app/components/toast.tsx` | Notifications client globales avec durée, fermeture, `aria-live` et portail. | `ToastProvider({ children })`, `useToast(): (type, title, message?) => void` | `app/layout.tsx`, `FlashToasts`, `CopyKey`, `CreateClaimButton`. | Le provider doit rester monté dans le layout ; ne pas créer un second système de toast. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `FlashToasts` | Composant partagé | `app/components/flash-toasts.tsx` | Traduit `notice`, `error` et `success` dans l'URL en notifications client. | Aucun prop ; consomme `useSearchParams`, `usePathname` et `useRouter`. | `app/layout.tsx` | Ajouter les nouveaux codes dans `NOTICES` ; réserver ce composant aux messages issus des redirections serveur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `ThemeToggle` | Composant partagé | `app/components/theme-toggle.tsx` | Bascule clair/sombre persistée dans `localStorage`. | Aucun prop. | `AppShell`. | Conserver le thème système initial et la clé `sfr-theme` ; ne pas créer de bouton de thème local. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `usePersistentState` | Hook partagé | `app/components/use-persistent-state.ts` | Persiste un état sérialisable dans `sessionStorage` après hydratation. | `usePersistentState<T>(key, initial)` | Filtres de `RequestTable`, `UserTable` et `AccessRequestTable`. | Versionner la clé quand la forme change ; ne jamais y stocker de secret ; gérer l'indisponibilité du stockage. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 
 ## Briques partagées dans un domaine
 
-| Composant/helper | Chemin | Responsabilité et API principale | Usages actuels | Contraintes | Tests associés |
-| --- | --- | --- | --- | --- | --- |
-| `DiscordUserColumns` et `SortHeader` | `app/components/discord-user-columns.tsx` | Rend les en-têtes, filtres et cellules d'identité Discord, avec sélection optionnelle des colonnes via `visibleColumns`; `SortHeader` fournit le bouton de tri accessible partagé. | `admin?view=users` et `demandes-acces`. | Réutiliser ces composants pour toute table affichant des colonnes Discord ou un en-tête triable ; ne pas recopier le markup ou les filtres. | `tests/discord-user-columns.test.ts`, `tests/discord-user-columns-render.test.tsx`, `npm run typecheck`, `npm run build` |
-| Helpers des colonnes Discord | `lib/discord-user-columns.ts` | Types, parsing/collecte des rôles, filtrage et comparaison des dates. | `UserTable`, `AccessRequestTable`, `DiscordUserColumns`. | Utiliser ces fonctions plutôt que parser `discordRoles` ou trier les anciennetés localement. | `tests/discord-user-columns.test.ts` |
-| Ancienneté Discord | `lib/member-age.ts` | Décode la date de création d'un compte via son snowflake et formate une durée. API : `accountCreatedAt`, `formatAge`. | `DiscordUserColumns`, tables utilisateurs. | Ne pas réimplémenter le calcul des âges ; fournir une date de référence explicite dans les tests. | `tests/member-age.test.ts` |
-| Notifications de remplacement de clé | `lib/key-replacement-notifications.ts` | Construit l'URL ciblée et le contenu sans secret du DM administrateur. API : `keyReplacementAdminUrl`, `buildKeyReplacementAdminMessage`. | Workflow de remplacement de clé et tests. | Ne jamais transmettre la clé en clair ; fournir uniquement une empreinte et un lien vers le portail. | `tests/key-replacement.test.ts` |
-| `RejectDialog` | `app/admin/reject-dialog.tsx` | Dialogue de saisie d'un motif de refus et soumission d'une action. Props : `requestId`, `requestIdField`, `action`, `commentField`, `title`. | Demandes de parrainage, demandes d'accès et remplacements de clés. | Réutiliser pour une décision nécessitant un motif ; conserver un champ d'identifiant explicite pour les actions spécialisées. | `npm run build` |
+| Élément | Type | Chemin | Responsabilité | API principale | Usages actuels | Contraintes | Tests |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `DiscordUserColumns` | Composant partagé de domaine | `app/components/discord-user-columns.tsx` | Rend les en-têtes, filtres et cellules d'identité Discord, avec sélection optionnelle des colonnes. | `kind`, `visibleColumns`, `user`, `rows`, `filters`, `onChange`, `sortKey`, `sortDir`, `onSort` | `admin?view=users` et `demandes-acces`. | Réutiliser ce composant pour toute table affichant ces données ; ne pas recopier son markup, ses filtres ou son tri. | `tests/discord-user-columns-render.test.tsx`, `npm run typecheck`, `npm run build` |
+| `SortHeader` | Composant partagé de domaine | `app/components/discord-user-columns.tsx` | Bouton d'en-tête de tableau avec état de tri accessible. | `label`, `active`, `direction`, `onClick` | `UserTable`, `AccessRequestTable` via `DiscordUserColumns` et pour le statut des demandes. | Préserver l'état visuel et le libellé ARIA ; ne pas recréer le markup du bouton de tri. | `tests/discord-user-columns-render.test.tsx`, `npm run typecheck`, `npm run build` |
+| Helpers des colonnes Discord | Helper partagé de domaine | `lib/discord-user-columns.ts` | Type de ligne, parsing et collecte des rôles, filtrage et comparaison des anciennetés. | `DiscordUserTableRow`, `parseDiscordRoles`, `collectDiscordRoles`, `matchesDiscordUserFilters`, `compareDiscordUsers` | `UserTable`, `AccessRequestTable`, `DiscordUserColumns`. | Utiliser ces fonctions plutôt que parser `discordRoles` ou trier les dates localement. | `tests/discord-user-columns.test.ts` |
+| Ancienneté Discord | Helper partagé de domaine | `lib/member-age.ts` | Décode la date de création d'un compte Discord et formate une durée. | `accountCreatedAt`, `formatAge` | `DiscordUserColumns` et les tables utilisateurs. | Ne pas réimplémenter le calcul ; fournir une date de référence explicite dans les tests. | `tests/member-age.test.ts` |
+| `RejectDialog` | Composant partagé d'administration | `app/admin/reject-dialog.tsx` | Dialogue de saisie d'un motif de refus et soumission d'une action. | `requestId`, `requestIdField`, `action`, `commentField`, `title` | Demandes de parrainage, demandes d'accès et remplacements de clés. | Réutiliser pour une décision nécessitant un motif ; conserver les champs d'identifiant et de commentaire adaptés à l'action. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| Règles des demandes d'accès | Helper métier partagé | `lib/access-request-rules.ts` | Limites de saisie, statuts, validation et comparaison de statuts. | `ACCESS_REQUEST_LIMITS`, `accessRequestStatus`, `accessRequestInputError`, `accessRequestDecisionError`, `compareAccessRequestStatuses` | Workflow des demandes d'accès et `AccessRequestTable`. | Garder les règles pures et synchronisées avec les formulaires et le modèle métier. | `tests/access-request-rules.test.ts` |
+| Règles de remplacement de clé | Helper métier partagé | `lib/key-replacement-rules.ts` | Statuts et validation des motifs de demande ou de refus. | `KEY_REPLACEMENT_REASON_MAX`, `keyReplacementInputError`, `keyReplacementDecisionError` | Workflow de remplacement et actions serveur. | Ne jamais déplacer la validation uniquement côté client. | `tests/key-replacement.test.ts` |
+| Règles du workflow de parrainage et de récupération | Helper métier partagé | `lib/workflow-rules.ts` | Règles pures d'éligibilité, de refus et de consommation d'un lien. | `claimRefusal`, `isClaimUsable`, `rejectionReasonError`, `saveKeyEligibilityError` | `lib/workflow.ts` et les tests de workflow. | Ne pas y ajouter d'accès à la base ni de dépendance React. | `tests/workflow-rules.test.ts` |
+| Notifications de remplacement de clé | Helper de présentation métier | `lib/key-replacement-notifications.ts` | Construit le lien ciblé et le DM administrateur sans secret. | `keyReplacementAdminUrl`, `buildKeyReplacementAdminMessage` | Workflow de remplacement et notification des administrateurs. | Utiliser uniquement une empreinte, un motif et un lien ; aucune clé en clair. | `tests/key-replacement.test.ts` |
+
+## Abstractions techniques existantes
+
+| Élément | Type | Chemin | Responsabilité | API principale | Usages actuels | Contraintes | Tests |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `queueNotification` et worker Discord | Abstraction technique | `lib/discord-notifications.ts` | Met en file, déduplique, réserve, retente et délivre les notifications DM/webhook. | `queueNotification`, `processPendingNotifications`, `startNotificationWorker`, `wakeNotificationWorker` | Actions serveur, workflows, `instrumentation.ts`. | Les notifications sont non bloquantes pour l'action métier ; respecter les clés de déduplication et ne jamais contourner la file. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| Payload et envoi webhook | Wrapper de bibliothèque HTTP | `lib/discord-webhook.ts` | Construit et envoie le payload du webhook de demandes d'accès. | `buildAccessRequestWebhookPayload`, `sendDiscordWebhook`, `DiscordWebhookPayload` | `lib/discord-notifications.ts`. | Échapper les valeurs Markdown et conserver `allowed_mentions` fermé. | `tests/discord-webhook.test.ts` |
+| `rateLimit` | Abstraction technique | `lib/rate-limit.ts` | Rate-limit en mémoire par clé et fenêtre temporelle. | `rateLimit`, `resetRateLimits` | Routes de récupération de clé. | Limité au processus courant ; ne pas le présenter comme un rate-limit distribué. | `tests/rate-limit.test.ts` |
+| Gardes d'accès et identité | Abstraction technique | `lib/access.ts` | Résout l'identité et protège les pages/actions selon les rôles et l'appartenance Discord. | `identity`, `isAdmin`, `requireAdmin`, `requireMember`, `requireAccessApprover`, `ensureUser`, `audit` | Pages et actions serveur. | Répéter les vérifications côté serveur ; ne pas se fier uniquement au masquage de l'interface. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| Client Prisma partagé | Abstraction d'accès aux données | `lib/prisma.ts` | Fournit une instance Prisma réutilisable et compatible avec le développement Next.js. | `prisma` | Pages, actions et workflows serveur. | Serveur uniquement ; Prisma et le schéma restent la source de vérité des données. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| Validation de l'environnement | Helper de validation | `lib/env.ts` | Valide et met en cache la configuration avec Zod. | `validateEnv`, `resetEnvCache` | Démarrage, routes et intégrations. | Ne jamais contourner la validation ni documenter de secrets réels. | `tests/env.test.ts` |
 
 ## Composants propres à une fonctionnalité
 
-Ces composants ne doivent pas être généralisés ou réutilisés sans vérifier que
-leur contrat métier reste pertinent :
+Ces éléments ne doivent pas être généralisés ou réutilisés artificiellement sans
+une seconde implémentation partageant réellement le même contrat métier.
 
-| Composant | Chemin | Fonctionnalité |
+| Élément | Type | Chemin | Fonctionnalité | Tests |
+| --- | --- | --- | --- | --- |
+| `CopyKey` | Composant métier | `app/components/copy-key.tsx` | Révélation et copie temporaire d'une clé R2 depuis un lien de récupération. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `CreateClaimButton` | Composant métier | `app/components/create-claim-button.tsx` | Création et affichage du lien personnel de récupération de clé. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `AccessRequestDetails` | Composant métier | `app/demandes-acces/access-request-details.tsx` | Détails d'une demande d'accès directe. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `RequestDetails` | Composant métier | `app/admin/request-details.tsx` | Détails d'une demande de parrainage dans l'administration. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `RequestTable` | Composant métier | `app/admin/request-table.tsx` | Table des demandes de parrainage de l'administration. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `UserTable` | Composant métier | `app/admin/user-table.tsx` | Table des utilisateurs Discord et de leurs permissions ; elle compose `DiscordUserColumns`. | Aucun test dédié ; helpers couverts par `tests/discord-user-columns.test.ts`, puis `npm run typecheck`, `npm run build` |
+| `AccessRequestTable` | Composant métier | `app/demandes-acces/access-request-table.tsx` | Table d'instruction des demandes d'accès ; elle compose les colonnes Discord et le tri de statut. | Aucun test dédié ; règles et colonnes couvertes par `tests/access-request-rules.test.ts` et `tests/discord-user-columns-render.test.tsx`, puis `npm run typecheck`, `npm run build` |
+| `UserManagement` | Composant métier | `app/admin/user-management.tsx` | Section d'administration de la synchronisation et de la gestion des utilisateurs. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+
+## Briques externes et choix actuels
+
+Les dépendances actuellement utilisées sont React/Next.js, Auth.js via
+`next-auth`, Prisma, Zod et Vitest. Les briques suivantes ne sont pas installées
+et ne doivent pas être ajoutées par réflexe :
+
+| Besoin éventuel | Brique à considérer | Décision actuelle |
 | --- | --- | --- |
-| `CopyKey` | `app/components/copy-key.tsx` | Révélation et copie temporaire d'une clé R2. |
-| `CreateClaimButton` | `app/components/create-claim-button.tsx` | Création du lien personnel de récupération de clé. |
-| `AccessRequestDetails` | `app/demandes-acces/access-request-details.tsx` | Détails d'une demande d'accès directe. |
-| `RequestTable` | `app/admin/request-table.tsx` | Table des demandes de parrainage de l'administration. |
-| `UserTable` | `app/admin/user-table.tsx` | Table des utilisateurs Discord et de leurs permissions. Elle compose `DiscordUserColumns`. |
-| `UserManagement` | `app/admin/user-management.tsx` | Section d'administration de la synchronisation et des utilisateurs. |
+| Tableaux complexes | TanStack Table | Ne pas introduire pour les tableaux actuels ; les besoins de tri, filtre et pagination restent limités et sont déjà factorisés par domaine. |
+| Très grandes listes | TanStack Virtual | Aucun volume observé ne le justifie. |
+| Formulaires | React Hook Form | Les formulaires utilisent les Server Actions et les contrôles HTML natifs ; conserver cette approche tant qu'elle reste lisible. |
+| Cache et mutations client | TanStack Query | Pas de cache client nécessaire pour les pages server-rendered actuelles. |
+| Authentification | Better Auth | Auth.js est déjà intégré et couvre le besoin. |
+| UI accessible | shadcn/ui / Radix | L'interface actuelle repose sur du HTML natif et des styles locaux ; ne pas ajouter une couche de composants sans migration justifiée. |
+| État dans l'URL | `nuqs` | Les paramètres actuels sont peu nombreux et utilisent les API Next.js natives. |
+| Server Actions typées | `next-safe-action` | Les actions existantes restent simples ; à réévaluer seulement si la duplication de validation et de gestion d'erreur augmente. |
+| Notifications | Sonner | Le système `ToastProvider` est déjà centralisé et suffisant pour le périmètre actuel. |
+| Stockage local structuré | Dexie | `localStorage` et `sessionStorage` couvrent les besoins actuels ; aucune donnée offline structurée n'est présente. |
+| Accès aux données | Drizzle ORM | Prisma est déjà la source de vérité du schéma et des migrations. |
+
+Une nouvelle bibliothèque doit remplacer une quantité significative de code ou
+résoudre un besoin concret partagé. Son adoption nécessite d'abord une proposition
+comparant le code supprimé, la complexité ajoutée, le coût de migration et
+l'impact sur les composants serveur/client.
+
+## Opportunités détectées, non refactorées
+
+L'audit relève les points suivants sans créer d'abstraction prématurée :
+
+| Catégorie | Observation | Position actuelle |
+| --- | --- | --- |
+| Mutualisation potentielle | La clé et les valeurs du thème sont lues dans le bootstrap de `app/layout.tsx` et dans `ThemeToggle`. | Envisager un helper ou une constante partagée uniquement si un troisième usage apparaît ou si la logique évolue. |
+| Mutualisation potentielle | `RequestTable`, `UserTable` et `AccessRequestTable` ont des patterns proches de filtres persistés, reset et pagination. | Conserver les contrats métier locaux ; extraire seulement une brique dont l'API supprimerait une duplication mesurable. |
+| Mutualisation potentielle | `ConfirmSubmit`, `RejectDialog`, `RequestDetails` et `AccessRequestDetails` utilisent des dialogues natifs proches. | Ne pas fusionner leurs contrats : confirmation destructive, motif obligatoire et affichage de détail sont des responsabilités différentes. |
+| Mutualisation potentielle | Certains formulaires utilisent encore des boutons natifs alors que `PendingButton` existe. | Harmoniser lors d'une modification fonctionnelle de ces formulaires ; ne pas lancer une migration isolée uniquement documentaire. |
+| Dette technique acceptable | Les tables sont des implémentations natives distinctes par domaine. | Ne pas créer de `DataTable` générique tant que les colonnes, actions et contrats diffèrent réellement. |
+| Dette technique acceptable | Il n'existe pas d'abstraction dédiée pour les paramètres de recherche ou l'accès aux données côté client. | Les API natives Next.js et les Server Components couvrent le besoin actuel. |
 
 ## Procédure de mise à jour
 
-Lorsqu'une nouvelle interface est demandée :
+Avant toute nouvelle interface ou logique de présentation :
 
-1. rechercher ici et dans `app/components/` par responsabilité ou comportement ;
-2. vérifier les usages existants et l'API réelle dans le code ;
-3. composer avec une brique existante ou l'étendre si la duplication est réelle ;
-4. documenter l'API, les contraintes et les tests si une brique devient partagée ;
-5. laisser les composants purement métier dans leur domaine tant qu'aucun second
-   usage réel ne justifie une abstraction.
+1. consulter ce catalogue et le document du domaine concerné ;
+2. rechercher les composants, hooks et helpers proches avec `rg` ;
+3. vérifier les dépendances déjà installées et les briques éprouvées adaptées ;
+4. réutiliser l'existant lorsqu'il couvre le contrat ;
+5. étendre une abstraction lorsqu'au moins deux usages partagent réellement le même besoin ;
+6. créer une nouvelle abstraction uniquement lorsqu'aucune solution existante ne convient ;
+7. mettre à jour le catalogue lorsqu'un élément devient partagé, change de contrat ou cesse de l'être ;
+8. ajouter les tests ou vérifications correspondant au contrat de l'abstraction.
+
+Ne pas créer une abstraction uniquement pour diminuer le nombre de lignes ou de
+fichiers, pour anticiper un usage hypothétique ou pour envelopper une bibliothèque
+sans valeur ajoutée. Préférer la composition, maintenir une source de vérité
+unique et supprimer une ancienne abstraction devenue inutile après migration.

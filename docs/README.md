@@ -14,6 +14,13 @@ unique : il ne faut pas recopier une même information dans plusieurs sources.
 | Consigner ou retrouver une décision d'architecture durable | [DECISIONS.md](DECISIONS.md) |
 | Retrouver le détail des changements passés | Git : `git log`, commits et pull requests |
 
+Avant toute création ou modification d'un composant partagé, hook, helper UI,
+formulaire, tableau, système de toast, mécanisme de persistance frontend ou
+logique générique de présentation, consulter
+[COMPONENTS-REUTILISABLES.md](COMPONENTS-REUTILISABLES.md). Ce catalogue est la
+référence des briques existantes et de leurs contraintes ; son contenu n'est pas
+recopié dans ce routeur documentaire.
+
 ## Documents créés au besoin
 
 Le dépôt ne possède actuellement ni cible validée, ni roadmap validée, ni chantier

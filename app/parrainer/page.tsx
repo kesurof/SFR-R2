@@ -1,7 +1,13 @@
+import { Alert, Card, Checkbox, Input, Space } from "antd";
+import Title from "antd/es/typography/Title";
+import Text from "antd/es/typography/Text";
+import Paragraph from "antd/es/typography/Paragraph";
+import TextArea from "antd/es/input/TextArea";
 import { createSponsorship } from "@/app/actions";
+import { FormField } from "@/app/components/form-field";
+import { PendingButton } from "@/app/components/pending-button";
 import { identity, isAdmin, requireMember } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { PendingButton } from "@/app/components/pending-button";
 
 export default async function SponsorPage() {
   await requireMember();
@@ -13,79 +19,77 @@ export default async function SponsorPage() {
 
   if (!isAdmin(actor.discordId) && !user?.sponsorPermission) {
     return (
-      <div className="wrap narrow">
-        <div className="page-head">
-          <span className="eyebrow">Parrainage</span>
-          <h1>Autorisation requise</h1>
+      <Space direction="vertical" size="large" style={{ display: "flex", maxWidth: 720, margin: "0 auto" }}>
+        <div>
+          <Text type="secondary">Parrainage</Text>
+          <Title level={2} style={{ margin: 0 }}>
+            Autorisation requise
+          </Title>
         </div>
-        <div className="banner danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M15 9l-6 6M9 9l6 6" />
-          </svg>
-          <div>
-            <b>Parrainage indisponible</b>
-            <p>
-              Ton compte Discord n&apos;a pas encore l&apos;autorisation de parrainer. Demande-la à un
-              administrateur sur le serveur.
-            </p>
-          </div>
-        </div>
-      </div>
+        <Alert
+          type="error"
+          showIcon
+          message="Parrainage indisponible"
+          description="Ton compte Discord n'a pas encore l'autorisation de parrainer. Demande-la à un administrateur sur le serveur."
+        />
+      </Space>
     );
   }
 
   return (
-    <div className="wrap narrow">
-      <div className="page-head">
-        <span className="eyebrow">Parrainage</span>
-        <h1>Nouvelle recommandation</h1>
-        <p>Indique uniquement des informations utiles à la décision de l&apos;équipe.</p>
+    <Space direction="vertical" size="large" style={{ display: "flex", maxWidth: 720, margin: "0 auto" }}>
+      <div>
+        <Text type="secondary">Parrainage</Text>
+        <Title level={2} style={{ margin: 0 }}>
+          Nouvelle recommandation
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          Indique uniquement des informations utiles à la décision de l&apos;équipe.
+        </Paragraph>
       </div>
 
-      <form action={createSponsorship} className="card" style={{ padding: 0 }}>
-        <div className="panel-body stack" style={{ gap: "var(--s4)" }}>
-          <div className="grid-2">
-            <label className="field">
-              <span>Filleul</span>
-              <input name="discordId" placeholder="Discord ID, nom ou pseudo serveur" required />
-              <span className="hint">17 à 20 chiffres pour un ID, ou un pseudo unique du serveur.</span>
-            </label>
-            <label className="field">
-              <span>Votre relation</span>
-              <input name="relationship" placeholder="Ami, collègue, famille…" required maxLength={160} />
-            </label>
+      <Card>
+        <form action={createSponsorship}>
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+              <FormField label="Filleul" hint="17 à 20 chiffres pour un ID, ou un pseudo unique du serveur.">
+                <Input name="discordId" placeholder="Discord ID, nom ou pseudo serveur" required />
+              </FormField>
+              <FormField label="Votre relation">
+                <Input name="relationship" placeholder="Ami, collègue, famille…" required maxLength={160} />
+              </FormField>
+              <FormField label="Depuis quand ?">
+                <Input name="knownSince" placeholder="Ex. 3 ans" required maxLength={100} />
+              </FormField>
+              <FormField
+                label={
+                  <>
+                    Commentaire <Text type="secondary">· facultatif</Text>
+                  </>
+                }
+              >
+                <Input name="comment" placeholder="Élément complémentaire utile" maxLength={1000} />
+              </FormField>
+            </div>
+            <FormField label="Contexte">
+              <TextArea
+                name="context"
+                placeholder="Comment tu connais cette personne et pourquoi tu la recommandes."
+                required
+                maxLength={1000}
+                rows={4}
+              />
+            </FormField>
+          </Space>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
+            <Checkbox name="attestationAccepted" value="true">
+              Je confirme connaître cette personne et j&apos;assume cette recommandation.
+            </Checkbox>
+            <PendingButton pendingLabel="Envoi…">Envoyer la demande</PendingButton>
           </div>
-          <div className="grid-2">
-            <label className="field">
-              <span>Depuis quand&nbsp;?</span>
-              <input name="knownSince" placeholder="Ex. 3 ans" required maxLength={100} />
-            </label>
-            <label className="field">
-              <span>
-                Commentaire <span className="faint">· facultatif</span>
-              </span>
-              <input name="comment" placeholder="Élément complémentaire utile" maxLength={1000} />
-            </label>
-          </div>
-          <label className="field">
-            <span>Contexte</span>
-            <textarea
-              name="context"
-              placeholder="Comment tu connais cette personne et pourquoi tu la recommandes."
-              required
-              maxLength={1000}
-            />
-          </label>
-        </div>
-        <div className="panel-head" style={{ borderTop: "1px solid var(--border)", borderBottom: 0 }}>
-          <label className="check">
-            <input type="checkbox" name="attestationAccepted" value="true" required />
-            Je confirme connaître cette personne et j&apos;assume cette recommandation.
-          </label>
-          <PendingButton pendingLabel="Envoi…">Envoyer la demande</PendingButton>
-        </div>
-      </form>
-    </div>
+        </form>
+      </Card>
+    </Space>
   );
 }

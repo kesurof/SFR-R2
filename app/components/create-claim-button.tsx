@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { App } from "antd";
+import { Alert, App, Button, Space } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
 
 export function CreateClaimButton() {
@@ -35,21 +35,18 @@ export function CreateClaimButton() {
 
   if (token) {
     return (
-      <div className="stack" style={{ gap: "var(--s2)" }}>
-        <div className="banner success" style={{ fontSize: 12.5 }}>
-          <CheckCircleOutlined />
-          <p>Ton lien personnel est prêt.</p>
-        </div>
-        <Link className="btn primary" href={`/claim/${token}`}>
-          Afficher ma clé
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Alert type="success" showIcon icon={<CheckCircleOutlined />} message="Ton lien personnel est prêt." />
+        <Link href={`/claim/${token}`}>
+          <Button type="primary">Afficher ma clé</Button>
         </Link>
-      </div>
+      </Space>
     );
   }
 
   return (
-    <button className="btn primary" onClick={create} disabled={busy}>
-      {busy ? "Création…" : "Créer mon lien pour récupérer ma clé"}
-    </button>
+    <Button type="primary" loading={busy} onClick={create}>
+      Créer mon lien pour récupérer ma clé
+    </Button>
   );
 }

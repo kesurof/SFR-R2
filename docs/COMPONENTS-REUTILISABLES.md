@@ -25,6 +25,7 @@ des vérifications indirectes lorsqu'aucun test dédié n'existe.
 | `FlashToasts` | Composant partagé | `app/components/flash-toasts.tsx` | Traduit `notice`, `error` et `success` dans l'URL en notifications Ant Design. | Aucun prop ; consomme `useSearchParams`, `usePathname`, `useRouter` et `App.useApp()`. | `app/layout.tsx` | Ajouter les nouveaux codes dans `NOTICES` ; réserver ce composant aux messages issus des redirections serveur. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `ThemeToggle` | Composant partagé | `app/components/theme-toggle.tsx` | Bascule clair/sombre via le contexte de `ThemeProvider`, persistée dans `localStorage`. | Aucun prop. | `AppShell`. | Utiliser `useThemeMode` et conserver la clé `sfr-theme` ; ne pas créer de bouton de thème local. | `tests/antd-theme.test.ts` |
 | `usePersistentState` | Hook partagé | `app/components/use-persistent-state.ts` | Persiste un état sérialisable dans `sessionStorage` après hydratation. | `usePersistentState<T>(key, initial)` | Filtres de `RequestTable`, `UserTable` et `AccessRequestTable`. | Versionner la clé quand la forme change ; ne jamais y stocker de secret ; gérer l'indisponibilité du stockage. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `FormField` | Composant partagé | `app/components/form-field.tsx` | Libellé, contrôle et aide d'un champ, compatible composants serveur. | `label`, `hint`, `children` | Formulaires de demande d'accès, parrainage, remplacement de clé, restauration et configuration. | Utiliser ce wrapper plutôt que recréer un libellé de champ ; les contrôles restent des composants Ant Design. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 
 ## Briques partagées dans un domaine
 
@@ -68,6 +69,8 @@ une seconde implémentation partageant réellement le même contrat métier.
 | `UserTable` | Composant métier | `app/admin/user-table.tsx` | `Table` Ant Design des utilisateurs Discord et de leurs permissions ; elle compose `buildDiscordUserColumns`. | Aucun test dédié ; helpers couverts par `tests/discord-user-columns.test.ts`, puis `npm run typecheck`, `npm run build` |
 | `AccessRequestTable` | Composant métier | `app/demandes-acces/access-request-table.tsx` | `Table` Ant Design d'instruction des demandes d'accès ; elle compose les colonnes Discord et le tri de statut. | Aucun test dédié ; règles et colonnes couvertes par `tests/access-request-rules.test.ts` et `tests/discord-user-columns-render.test.tsx`, puis `npm run typecheck`, `npm run build` |
 | `UserManagement` | Composant métier | `app/admin/user-management.tsx` | Section d'administration de la synchronisation et de la gestion des utilisateurs. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `KeysTable` | Composant métier | `app/admin/keys-table.tsx` | `Table` Ant Design de l'historique des clés et des demandes de remplacement. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `SponsorshipTable` | Composant métier | `app/parrainer/suivi/sponsorship-table.tsx` | `Table` Ant Design du suivi des parrainages d'un membre. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 
 ## Briques externes et choix actuels
 

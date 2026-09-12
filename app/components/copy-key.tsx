@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { App } from "antd";
+import { Alert, App, Button } from "antd";
 import { CheckOutlined, CloseCircleOutlined, CopyOutlined, WarningOutlined } from "@ant-design/icons";
 
 const WINDOW_SECONDS = 15 * 60;
@@ -77,29 +77,34 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
           <>
             <div className="keybox">{secret}</div>
             <div className="copyrow">
-              <button className="btn primary sm" onClick={copy}>
-                {copied ? <CheckOutlined /> : <CopyOutlined />}
+              <Button type="primary" size="small" icon={copied ? <CheckOutlined /> : <CopyOutlined />} onClick={copy}>
                 {copied ? "Copié" : "Copier la clé"}
-              </button>
+              </Button>
             </div>
-            <div className="warnline">
-              <WarningOutlined />
-              Cette clé ne réapparaîtra pas. Colle-la maintenant dans StreamFusion Reborn.
-            </div>
+            <Alert
+              type="warning"
+              showIcon
+              icon={<WarningOutlined />}
+              message="Cette clé ne réapparaîtra pas. Colle-la maintenant dans StreamFusion Reborn."
+              style={{ marginTop: 12 }}
+            />
           </>
         ) : (
           <>
             <p className="muted" style={{ fontSize: 13, margin: "var(--s4) 0" }}>
               {expired ? "Ce lien a expiré." : "Prêt à afficher la clé d'accès R2 ?"}
             </p>
-            <button className="btn primary" onClick={reveal} disabled={busy || expired}>
-              {busy ? "Affichage…" : "Afficher ma clé une seule fois"}
-            </button>
+            <Button type="primary" loading={busy} disabled={expired} onClick={reveal}>
+              Afficher ma clé une seule fois
+            </Button>
             {error && (
-              <div className="banner danger" style={{ marginTop: "var(--s4)", fontSize: 12.5 }}>
-                <CloseCircleOutlined />
-                <p>{error}</p>
-              </div>
+              <Alert
+                type="error"
+                showIcon
+                icon={<CloseCircleOutlined />}
+                message={error}
+                style={{ marginTop: 16 }}
+              />
             )}
           </>
         )}

@@ -1,15 +1,21 @@
+import { Alert, Card, Space, Steps } from "antd";
+import Title from "antd/es/typography/Title";
+import Text from "antd/es/typography/Text";
+import Paragraph from "antd/es/typography/Paragraph";
+import TextArea from "antd/es/input/TextArea";
 import { requestKeyReplacementAction } from "@/app/actions";
+import { FormField } from "@/app/components/form-field";
 import { PendingButton } from "@/app/components/pending-button";
 import { requireMember } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { CreateClaimButton } from "@/app/components/create-claim-button";
 
 const STEPS = [
-  ["Demande de parrainage", "Soumise par ton parrain"],
-  ["Validation de l'équipe", "Un administrateur examine la demande"],
-  ["Clé préparée", "L'équipe ajoute ta clé R2"],
-  ["Clé disponible", "À récupérer via un lien personnel"],
-] as const;
+  { title: "Demande de parrainage", description: "Soumise par ton parrain" },
+  { title: "Validation de l'équipe", description: "Un administrateur examine la demande" },
+  { title: "Clé préparée", description: "L'équipe ajoute ta clé R2" },
+  { title: "Clé disponible", description: "À récupérer via un lien personnel" },
+];
 
 type Stage = "none" | "pending" | "approved" | "ready" | "rejected" | "revoked";
 const DONE: Record<Stage, number> = { none: 0, pending: 1, approved: 2, ready: 4, rejected: 1, revoked: 2 };
@@ -39,143 +45,102 @@ export default async function AccessPage() {
   const done = DONE[stage];
 
   return (
-    <div className="wrap">
-      <div className="page-head">
-        <span className="eyebrow">Votre accès</span>
-        <h1>Récupérer votre clé</h1>
-        <p>Suivi de ton compte et génération d&apos;un lien personnel à usage unique.</p>
+    <Space direction="vertical" size="large" style={{ display: "flex" }}>
+      <div>
+        <Text type="secondary">Votre accès</Text>
+        <Title level={2} style={{ margin: 0 }}>
+          Récupérer votre clé
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          Suivi de ton compte et génération d&apos;un lien personnel à usage unique.
+        </Paragraph>
       </div>
 
-      <div className="grid-2">
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Statut du compte</h2>
-          </div>
-          <div className="panel-body">
-            <div className="timeline">
-              {STEPS.map(([title, sub], i) => {
-                const cls = i < done ? "done" : i === done ? "current" : "pending";
-                return (
-                  <div className={`tl ${cls}`} key={title}>
-                    <div className="tl-marker">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <div className="tl-body">
-                      <h4>{title}</h4>
-                      <p>{sub}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+        <Card title="Statut du compte">
+          <Steps
+            direction="vertical"
+            size="small"
+            current={done}
+            status={stage === "revoked" || stage === "rejected" ? "error" : "process"}
+            items={STEPS}
+          />
+        </Card>
 
-        <div className="stack">
+        <Space direction="vertical" size="middle" style={{ display: "flex" }}>
           {hasActiveKey && (
-            <div className="panel">
-              <div className="panel-head">
-                <h2>Remplacer ma clé</h2>
-              </div>
-              <div className="panel-body stack">
+            <Card title="Remplacer ma clé">
+              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                 {replacement?.status === "PENDING" ? (
-                  <div className="banner warn" style={{ fontSize: 12.5 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v5M12 16h.01" /><circle cx="12" cy="12" r="9" /></svg>
-                    <p>Ta demande de remplacement est en cours d&apos;examen par l&apos;équipe.</p>
-                  </div>
+                  <Alert type="warning" showIcon message="Ta demande de remplacement est en cours d'examen par l'équipe." />
                 ) : (
                   <>
-                    {replacement?.status === "REJECTED" && <div className="banner danger" style={{ fontSize: 12.5 }}><div><b>Dernière demande refusée</b><p>{replacement.decisionComment || "Tu peux envoyer une nouvelle demande si nécessaire."}</p></div></div>}
-                    <p className="muted" style={{ fontSize: 13 }}>Explique pourquoi tu souhaites recevoir une nouvelle clé. L&apos;ancienne reste active tant que l&apos;équipe n&apos;a pas effectué le remplacement.</p>
-                    <form action={requestKeyReplacementAction} className="stack">
-                      <label className="field"><span>Motif du remplacement</span><textarea name="reason" required maxLength={500} placeholder="Décris brièvement le problème rencontré avec ta clé…" /><span className="hint">500 caractères maximum.</span></label>
-                      <PendingButton pendingLabel="Envoi…">Demander le remplacement</PendingButton>
+                    {replacement?.status === "REJECTED" && (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message="Dernière demande refusée"
+                        description={replacement.decisionComment || "Tu peux envoyer une nouvelle demande si nécessaire."}
+                      />
+                    )}
+                    <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
+                      Explique pourquoi tu souhaites recevoir une nouvelle clé. L&apos;ancienne reste active tant que l&apos;équipe n&apos;a pas effectué le remplacement.
+                    </Paragraph>
+                    <form action={requestKeyReplacementAction}>
+                      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                        <FormField label="Motif du remplacement" hint="500 caractères maximum.">
+                          <TextArea name="reason" required maxLength={500} rows={3} placeholder="Décris brièvement le problème rencontré avec ta clé…" />
+                        </FormField>
+                        <PendingButton pendingLabel="Envoi…">Demander le remplacement</PendingButton>
+                      </Space>
                     </form>
                   </>
                 )}
-              </div>
-            </div>
+              </Space>
+            </Card>
           )}
 
-          <div className="panel">
-            <div className="panel-head">
-              <h2>Générer mon lien</h2>
-            </div>
-            <div className="panel-body stack">
-              {stage === "ready" ? (
-                <>
-                  <p className="muted" style={{ fontSize: 13 }}>
-                    Ta clé est prête. Crée un lien personnel pour l&apos;afficher une seule fois.
-                  </p>
-                  <CreateClaimButton />
-                  <div className="banner warn" style={{ fontSize: 12 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 8v5M12 16h.01" />
-                      <circle cx="12" cy="12" r="9" />
-                    </svg>
-                    <p>Le lien expire dans 15 minutes et ne fonctionne qu&apos;une seule fois.</p>
-                  </div>
-                </>
-              ) : stage === "revoked" ? (
-                <div className="banner danger" style={{ fontSize: 12.5 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M15 9l-6 6M9 9l6 6" />
-                  </svg>
-                  <p>Ta clé a été révoquée. Contacte l&apos;équipe sur Discord pour en obtenir une nouvelle.</p>
-                </div>
-              ) : stage === "rejected" ? (
-                <div className="banner danger" style={{ fontSize: 12.5 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M15 9l-6 6M9 9l6 6" />
-                  </svg>
-                  <div>
-                    <b>Ta demande de parrainage a été refusée.</b>
+          <Card title="Générer mon lien">
+            {stage === "ready" ? (
+              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
+                  Ta clé est prête. Crée un lien personnel pour l&apos;afficher une seule fois.
+                </Paragraph>
+                <CreateClaimButton />
+                <Alert type="warning" showIcon message="Le lien expire dans 15 minutes et ne fonctionne qu'une seule fois." />
+              </Space>
+            ) : stage === "revoked" ? (
+              <Alert type="error" showIcon message="Ta clé a été révoquée. Contacte l'équipe sur Discord pour en obtenir une nouvelle." />
+            ) : stage === "rejected" ? (
+              <Alert
+                type="error"
+                showIcon
+                message="Ta demande de parrainage a été refusée."
+                description={
+                  <>
                     {req?.rejectionReason ? <p>{req.rejectionReason}</p> : null}
-                    <p className="faint" style={{ marginTop: 6 }}>
-                      Tu peux en discuter avec ton parrain, qui peut soumettre une nouvelle demande.
-                    </p>
-                  </div>
-                </div>
-              ) : stage === "none" ? (
-                <div className="banner info" style={{ fontSize: 12.5 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 8h.01M11 12h1v4h1" />
-                  </svg>
-                  <p>Aucun accès n&apos;a encore été préparé. Fais-toi parrainer sur le serveur Discord.</p>
-                </div>
-              ) : (
-                <div className="banner warn" style={{ fontSize: 12.5 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 8v5M12 16h.01" />
-                    <circle cx="12" cy="12" r="9" />
-                  </svg>
-                  <p>Ta demande suit son cours. Tu pourras générer ton lien dès que la clé sera prête.</p>
-                </div>
-              )}
-            </div>
-          </div>
+                    <Text type="secondary">Tu peux en discuter avec ton parrain, qui peut soumettre une nouvelle demande.</Text>
+                  </>
+                }
+              />
+            ) : stage === "none" ? (
+              <Alert type="info" showIcon message="Aucun accès n'a encore été préparé. Fais-toi parrainer sur le serveur Discord." />
+            ) : (
+              <Alert type="warning" showIcon message="Ta demande suit son cours. Tu pourras générer ton lien dès que la clé sera prête." />
+            )}
+          </Card>
 
-          <div className="panel">
-            <div className="panel-head">
-              <h2>Où utiliser la clé</h2>
-            </div>
-            <div className="panel-body stack" style={{ gap: "var(--s3)" }}>
-              <p className="muted" style={{ fontSize: 12.5 }}>
-                Ouvre la configuration de <strong>StreamFusion Reborn</strong> et colle la clé dans le
-                champ <span className="mono">R2 access key</span>, puis valide.
-              </p>
-              <p className="faint" style={{ fontSize: 11.5 }}>
-                Texte pas-à-pas à finaliser avec l&apos;équipe — emplacement réservé.
-              </p>
-            </div>
-          </div>
-        </div>
+          <Card title="Où utiliser la clé">
+            <Paragraph type="secondary" style={{ marginBottom: 8, fontSize: 12.5 }}>
+              Ouvre la configuration de <strong>StreamFusion Reborn</strong> et colle la clé dans le champ{" "}
+              <Text code>R2 access key</Text>, puis valide.
+            </Paragraph>
+            <Text type="secondary" style={{ fontSize: 11.5 }}>
+              Texte pas-à-pas à finaliser avec l&apos;équipe — emplacement réservé.
+            </Text>
+          </Card>
+        </Space>
       </div>
-    </div>
+    </Space>
   );
 }

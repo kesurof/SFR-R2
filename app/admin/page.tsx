@@ -1,10 +1,15 @@
 import Link from "next/link";
-import { clearAccessRequestWebhook, rejectKeyReplacementAction, replaceKeyAction, revoke, updateNotificationSettings } from "@/app/actions";
+import { Alert, Button, Card, Checkbox, Col, Input, Menu, Row, Space, Statistic, Tag } from "antd";
+import Title from "antd/es/typography/Title";
+import Text from "antd/es/typography/Text";
+import Paragraph from "antd/es/typography/Paragraph";
+import Password from "antd/es/input/Password";
+import { clearAccessRequestWebhook, updateNotificationSettings } from "@/app/actions";
 import { UserManagement } from "@/app/admin/user-management";
 import { RequestTable } from "@/app/admin/request-table";
-import { RejectDialog } from "@/app/admin/reject-dialog";
+import { KeysTable, type KeyRow } from "@/app/admin/keys-table";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
-import { PendingButton } from "@/app/components/pending-button";
+import { FormField } from "@/app/components/form-field";
 import { identity, isAdmin } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { getNotificationSettings } from "@/lib/settings";
@@ -104,17 +109,28 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     sponsorByReferred.set(source.referredId, source.sponsor.serverNickname || source.sponsor.username);
   }
 
-  const keyRows = displayKeys.map((key) => ({
-    id: key.id,
-    member: key.user.serverNickname || key.user.username || key.user.discordId,
-    discordId: key.user.discordId,
-    fingerprint: `${key.prefix}••••••••${key.suffix}`,
-    status: key.status,
-    revokedAt: key.revokedAt,
-    createdAt: key.createdAt,
-    sponsor: sponsorByReferred.get(key.userId) ?? "Équipe",
-    replacementRequest: replacementByKeyId.get(key.id) ?? null,
-  }));
+  const keyRows: KeyRow[] = displayKeys.map((key) => {
+    const replacement = replacementByKeyId.get(key.id) ?? null;
+    return {
+      id: key.id,
+      member: key.user.serverNickname || key.user.username || key.user.discordId,
+      discordId: key.user.discordId,
+      fingerprint: `${key.prefix}••••••••${key.suffix}`,
+      status: key.status,
+      revokedAt: key.revokedAt?.toISOString() ?? null,
+      createdAt: key.createdAt.toISOString(),
+      sponsor: sponsorByReferred.get(key.userId) ?? "Équipe",
+      replacementRequest: replacement
+        ? {
+            id: replacement.id,
+            status: replacement.status,
+            createdAt: replacement.createdAt.toISOString(),
+            reason: replacement.reason,
+            decisionComment: replacement.decisionComment,
+          }
+        : null,
+    };
+  });
 
   const requestRows = requests.map((request) => ({
     id: request.id,
@@ -146,204 +162,160 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const keysTruncated = keyTotal > keys.length;
 
   return (
-    <div className="wrap">
-      <div className="page-head">
-        <span className="eyebrow">Administration</span>
-        <h1>Gestion des accès</h1>
+    <Space direction="vertical" size="large" style={{ display: "flex" }}>
+      <div>
+        <Text type="secondary">Administration</Text>
+        <Title level={2} style={{ margin: 0 }}>
+          Gestion des accès
+        </Title>
       </div>
 
-      <div className="counts">
-        <div className={`count-tile${pending ? " alert" : ""}`}>
-          <div className="v">{pending}</div>
-          <div className="k">Demandes en attente</div>
-        </div>
-        <div className="count-tile">
-          <div className="v">{activeKeyCount}</div>
-          <div className="k">Clés actives</div>
-        </div>
-        <div className="count-tile">
-          <div className="v">{pendingNotifications + failedNotifications}</div>
-          <div className="k">Notifications à traiter</div>
-        </div>
-        <div className="count-tile">
-          <div className="v">{memberCount}</div>
-          <div className="k">Membres synchronisés</div>
-        </div>
-      </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic title="Demandes en attente" value={pending} valueStyle={pending ? { color: "#cf1322" } : undefined} />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic title="Clés actives" value={activeKeyCount} />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic title="Notifications à traiter" value={pendingNotifications + failedNotifications} />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic title="Membres synchronisés" value={memberCount} />
+          </Card>
+        </Col>
+      </Row>
 
-      <nav className="tabs" aria-label="Sections d'administration">
-        {VIEWS.map((v) => (
-          <Link key={v.id} href={`/admin?view=${v.id}`} aria-current={view === v.id ? "page" : undefined}>
-            {v.label}
-            {v.id === "requests" && pending > 0 ? <span className="pill">{pending}</span> : null}
-          </Link>
-        ))}
-      </nav>
+      <Menu
+        mode="horizontal"
+        selectedKeys={[view]}
+        items={VIEWS.map((item) => ({
+          key: item.id,
+          label: (
+            <Link href={`/admin?view=${item.id}`}>
+              {item.label}
+              {item.id === "requests" && pending > 0 ? ` (${pending})` : ""}
+            </Link>
+          ),
+        }))}
+      />
 
       {view === "requests" && (
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Demandes de parrainage</h2>
-            <span className="faint" style={{ fontSize: 11.5 }}>
+        <Card
+          title="Demandes de parrainage"
+          extra={
+            <Text type="secondary" style={{ fontSize: 12 }}>
               {requestsTruncated ? `${requests.length} plus récentes sur ${requestTotal}` : requestTotal}
-            </span>
-          </div>
+            </Text>
+          }
+        >
           <RequestTable requests={requestRows} />
           {requestsTruncated && (
-            <p className="empty-state">
-              Seules les {REQUESTS_LIMIT} demandes les plus récentes sont chargées. Les plus anciennes
-              restent consultables dans l’historique des clés et les journaux d’audit.
-            </p>
+            <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+              Seules les {REQUESTS_LIMIT} demandes les plus récentes sont chargées. Les plus anciennes restent consultables dans l’historique des clés et les journaux d’audit.
+            </Paragraph>
           )}
-        </div>
+        </Card>
       )}
 
       {view === "users" && <UserManagement />}
 
       {view === "keys" && (
-        <div className="panel">
-          <div className="panel-head">
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <h2>Historique des clés</h2>
-              <span className="faint" style={{ fontSize: 11.5 }}>
-                {keysTruncated ? `${keys.length} plus récentes sur ${keyTotal}` : keyTotal}
-              </span>
-            </div>
-            <span className="faint" style={{ fontSize: 11.5 }}>
-              Le parrain reste le référent du filleul.
-            </span>
-          </div>
-          {keyRows.length ? (
-            <div className="tbl-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Membre</th>
-                    <th>Parrainé par</th>
-                    <th>Empreinte</th>
-                    <th>Émise</th>
-                    <th>Révoquée</th>
-                    <th>Remplacement</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {keyRows.map((k) => (
-                    <tr key={k.id} id={k.replacementRequest ? `replacement-${k.replacementRequest.id}` : undefined} style={k.replacementRequest?.id === replacementRequestId ? { outline: "2px solid var(--accent)" } : undefined}>
-                      <td>
-                        <strong>{k.member}</strong>
-                        <span className="sub">{k.discordId}</span>
-                      </td>
-                      <td>
-                        <span className="chip" style={{ padding: "2px 8px" }}>
-                          <span
-                            className="dot"
-                            style={{ background: k.sponsor === "Équipe" ? "var(--faint)" : "#5865F2" }}
-                          />
-                          {k.sponsor}
-                        </span>
-                      </td>
-                      <td className="mono">{k.fingerprint}</td>
-                      <td className="mono faint">{k.createdAt.toLocaleDateString("fr-FR")}</td>
-                      <td className="mono faint">{k.revokedAt ? k.revokedAt.toLocaleDateString("fr-FR") : "—"}</td>
-                      <td>
-                        {k.replacementRequest ? (
-                          <div className="stack" style={{ gap: "var(--s2)", minWidth: 240 }}>
-                            <div><span className={`badge ${k.replacementRequest.status === "PENDING" ? "pending" : k.replacementRequest.status === "COMPLETED" ? "ready" : "archived"}`}>{k.replacementRequest.status === "PENDING" ? "À traiter" : k.replacementRequest.status === "COMPLETED" ? "Traitée" : "Refusée"}</span><span className="sub">{k.replacementRequest.createdAt.toLocaleString("fr-FR")}</span></div>
-                            <span className="sub">{k.replacementRequest.reason}</span>
-                            {k.replacementRequest.status === "PENDING" && k.status === "ACTIVE" && (
-                              <>
-                                <form action={replaceKeyAction} className="stack" style={{ gap: "var(--s2)" }}>
-                                  <input type="hidden" name="replacementRequestId" value={k.replacementRequest.id} />
-                                  <input name="secret" type="password" required autoComplete="off" placeholder="Nouvelle clé" className="mono" />
-                                  <PendingButton pendingLabel="Remplacement…" className="btn primary sm">Remplacer la clé</PendingButton>
-                                </form>
-                                <RejectDialog requestId={k.replacementRequest.id} action={rejectKeyReplacementAction} requestIdField="replacementRequestId" commentField="decisionComment" title="Refuser le remplacement" />
-                              </>
-                            )}
-                            {k.replacementRequest.status === "REJECTED" && k.replacementRequest.decisionComment && <span className="sub">Refus : {k.replacementRequest.decisionComment}</span>}
-                          </div>
-                        ) : <span className="faint">—</span>}
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        {k.status === "ACTIVE" && (
-                          <form action={revoke}>
-                            <input type="hidden" name="keyId" value={k.id} />
-                            <ConfirmSubmit
-                              title="Révoquer cette clé ?"
-                              message="Le membre perdra immédiatement l'accès au stockage R2. Une nouvelle clé devra être émise."
-                              confirmLabel="Révoquer"
-                            >
-                              Révoquer
-                            </ConfirmSubmit>
-                          </form>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="empty-state">Aucune clé enregistrée.</p>
-          )}
-        </div>
+        <Card
+          title="Historique des clés"
+          extra={
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {keysTruncated ? `${keys.length} plus récentes sur ${keyTotal}` : keyTotal}
+            </Text>
+          }
+        >
+          <KeysTable rows={keyRows} focusedReplacementId={replacementRequestId} />
+        </Card>
       )}
 
       {view === "settings" && settings && (
-        <div className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Notifications Discord</h2>
-              <p className="faint" style={{ marginTop: 4 }}>Réglages des notifications envoyées par le portail.</p>
-            </div>
-            <span className={`badge ${settings.discordNotificationsEnabled ? "ready" : "archived"}`}>
-              {settings.discordNotificationsEnabled ? "Activées" : "Désactivées"}
-            </span>
-          </div>
-          <div className="panel-body">
-            <form action={updateNotificationSettings} className="settings-form">
-              <label className="settings-toggle">
-                <input type="checkbox" name="discordNotificationsEnabled" value="true" defaultChecked={settings.discordNotificationsEnabled} />
-                <span>
-                  <strong>Notifications privées activées</strong>
-                  <span className="sub">Les changements s’appliquent sans redémarrer le conteneur.</span>
-                </span>
-              </label>
-              <div className="field settings-interval">
-                <label htmlFor="notificationWorkerIntervalSeconds">Intervalle de traitement</label>
-                <div className="inline-field">
-                  <input id="notificationWorkerIntervalSeconds" name="notificationWorkerIntervalSeconds" type="number" min={10} max={3600} step={1} defaultValue={settings.notificationWorkerIntervalSeconds} required />
-                  <span className="faint">secondes</span>
-                </div>
-                <span className="hint">Entre 10 et 3 600 secondes. Les notifications sont traitées en arrière-plan ; aucune clé ni aucun token n’est transmis.</span>
-              </div>
-              <div className="field settings-webhook">
-                <label htmlFor="accessRequestWebhookUrl">Webhook Discord des nouvelles demandes</label>
-                <div className="inline-field">
-                  <input id="accessRequestWebhookUrl" name="accessRequestWebhookUrl" type="password" autoComplete="new-password" spellCheck={false} placeholder={settings.accessRequestWebhookConfigured ? "Webhook configuré — laisser vide pour le conserver" : "https://discord.com/api/webhooks/…"} />
-                  {settings.accessRequestWebhookConfigured && <span className="badge ready">Configuré</span>}
-                </div>
-                <span className="hint">L’URL est chiffrée et masquée. Elle sert uniquement à publier un embed lors d’une nouvelle demande d’accès. Laissez vide pour conserver le webhook actuel.</span>
-              </div>
-              <div className="banner info" role="note">
-                <div><b>À savoir</b><p>Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation.</p></div>
-              </div>
-              <div className="settings-actions">
-                <button className="btn primary" type="submit">Enregistrer</button>
-                <span className="faint settings-updated">Dernière modification : {settings.updatedAt.toLocaleString("fr-FR")} {settings.updatedByDiscordId ? `par ${settings.updatedByDiscordId}` : "(initialisation)"}</span>
-              </div>
+        <Card
+          title="Notifications Discord"
+          extra={<Tag color={settings.discordNotificationsEnabled ? "green" : "default"}>{settings.discordNotificationsEnabled ? "Activées" : "Désactivées"}</Tag>}
+        >
+          <Paragraph type="secondary" style={{ marginTop: -8 }}>
+            Réglages des notifications envoyées par le portail.
+          </Paragraph>
+          <form action={updateNotificationSettings}>
+            <Space direction="vertical" size="middle" style={{ width: "100%", maxWidth: 720 }}>
+              <Checkbox name="discordNotificationsEnabled" value="true" defaultChecked={settings.discordNotificationsEnabled}>
+                <strong>Notifications privées activées</strong>
+                <Text type="secondary" style={{ display: "block" }}>
+                  Les changements s’appliquent sans redémarrer le conteneur.
+                </Text>
+              </Checkbox>
+              <FormField label="Intervalle de traitement" hint="Entre 10 et 3 600 secondes. Les notifications sont traitées en arrière-plan ; aucune clé ni aucun token n’est transmis.">
+                <Space>
+                  <Input
+                    id="notificationWorkerIntervalSeconds"
+                    name="notificationWorkerIntervalSeconds"
+                    type="number"
+                    min={10}
+                    max={3600}
+                    step={1}
+                    defaultValue={settings.notificationWorkerIntervalSeconds}
+                    required
+                    style={{ width: 120 }}
+                  />
+                  <Text type="secondary">secondes</Text>
+                </Space>
+              </FormField>
+              <FormField
+                label="Webhook Discord des nouvelles demandes"
+                hint="L’URL est chiffrée et masquée. Elle sert uniquement à publier un embed lors d’une nouvelle demande d’accès. Laissez vide pour conserver le webhook actuel."
+              >
+                <Space wrap>
+                  <Password
+                    id="accessRequestWebhookUrl"
+                    name="accessRequestWebhookUrl"
+                    autoComplete="new-password"
+                    placeholder={settings.accessRequestWebhookConfigured ? "Webhook configuré — laisser vide pour le conserver" : "https://discord.com/api/webhooks/…"}
+                    style={{ width: 380 }}
+                  />
+                  {settings.accessRequestWebhookConfigured && <Tag color="green">Configuré</Tag>}
+                </Space>
+              </FormField>
+              <Alert
+                type="info"
+                showIcon
+                message="À savoir"
+                description="Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation."
+              />
+              <Space wrap>
+                <Button type="primary" htmlType="submit">
+                  Enregistrer
+                </Button>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Dernière modification : {settings.updatedAt.toLocaleString("fr-FR")} {settings.updatedByDiscordId ? `par ${settings.updatedByDiscordId}` : "(initialisation)"}
+                </Text>
+              </Space>
+            </Space>
+          </form>
+          {settings.accessRequestWebhookConfigured && (
+            <form action={clearAccessRequestWebhook} style={{ marginTop: 16 }}>
+              <ConfirmSubmit
+                title="Supprimer le webhook ?"
+                message="Les nouvelles demandes ne seront plus envoyées à ce webhook. Cette action ne peut pas être annulée automatiquement."
+                confirmLabel="Supprimer le webhook"
+              >
+                Supprimer le webhook
+              </ConfirmSubmit>
             </form>
-            {settings.accessRequestWebhookConfigured && (
-              <form action={clearAccessRequestWebhook} className="settings-webhook-actions">
-                <ConfirmSubmit title="Supprimer le webhook ?" message="Les nouvelles demandes ne seront plus envoyées à ce webhook. Cette action ne peut pas être annulée automatiquement." confirmLabel="Supprimer le webhook">
-                  Supprimer le webhook
-                </ConfirmSubmit>
-              </form>
-            )}
-          </div>
-        </div>
+          )}
+        </Card>
       )}
-    </div>
+    </Space>
   );
 }

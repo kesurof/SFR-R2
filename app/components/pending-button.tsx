@@ -1,11 +1,12 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { Button } from "antd";
 
 export function PendingButton({
   children,
   pendingLabel,
-  className = "btn primary",
+  className,
   name,
   value,
 }: {
@@ -17,8 +18,16 @@ export function PendingButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={className} disabled={pending} name={name} value={value}>
-      {pending ? pendingLabel ?? "…" : children}
-    </button>
+    <Button
+      type="primary"
+      htmlType="submit"
+      loading={pending}
+      disabled={pending}
+      name={name}
+      value={value}
+      className={className}
+    >
+      {pending && pendingLabel ? pendingLabel : children}
+    </Button>
   );
 }

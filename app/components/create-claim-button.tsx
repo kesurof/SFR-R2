@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { App } from "antd";
+import { CheckCircleOutlined } from "@ant-design/icons";
 
 export function CreateClaimButton() {
   const [token, setToken] = useState<string>();
@@ -36,9 +37,7 @@ export function CreateClaimButton() {
     return (
       <div className="stack" style={{ gap: "var(--s2)" }}>
         <div className="banner success" style={{ fontSize: 12.5 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+          <CheckCircleOutlined />
           <p>Ton lien personnel est prêt.</p>
         </div>
         <Link className="btn primary" href={`/claim/${token}`}>

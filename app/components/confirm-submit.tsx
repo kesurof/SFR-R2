@@ -1,17 +1,18 @@
 "use client";
 
 import { useRef } from "react";
+import { Button, Popconfirm } from "antd";
 
 /**
- * Bouton qui, au clic, ouvre un <dialog> de confirmation ; sur validation il
- * soumet le <form> parent (via requestSubmit). Remplace window.confirm().
+ * Bouton qui demande confirmation (Popconfirm) puis soumet le <form> parent via
+ * requestSubmit. Remplace window.confirm() et l'ancien <dialog> natif.
  */
 export function ConfirmSubmit({
   children,
   title,
   message,
   confirmLabel,
-  className = "btn danger sm",
+  className,
   name,
   value,
 }: {
@@ -23,11 +24,9 @@ export function ConfirmSubmit({
   name?: string;
   value?: string;
 }) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<React.ComponentRef<typeof Button>>(null);
 
   function submit() {
-    dialogRef.current?.close();
     const form = triggerRef.current?.closest("form");
     if (!form) return;
     if (name) {
@@ -42,29 +41,17 @@ export function ConfirmSubmit({
   }
 
   return (
-    <>
-      <button
-        type="button"
-        ref={triggerRef}
-        className={className}
-        onClick={() => dialogRef.current?.showModal()}
-      >
+    <Popconfirm
+      title={title}
+      description={message}
+      okText={confirmLabel}
+      cancelText="Annuler"
+      okButtonProps={{ danger: true }}
+      onConfirm={submit}
+    >
+      <Button ref={triggerRef} danger size="small" className={className}>
         {children}
-      </button>
-      <dialog ref={dialogRef} onClick={(e) => e.target === dialogRef.current && dialogRef.current?.close()}>
-        <div className="dlg">
-          <h3>{title}</h3>
-          <p>{message}</p>
-          <div className="row">
-            <button type="button" className="btn ghost sm" onClick={() => dialogRef.current?.close()}>
-              Annuler
-            </button>
-            <button type="button" className="btn danger sm" onClick={submit}>
-              {confirmLabel}
-            </button>
-          </div>
-        </div>
-      </dialog>
-    </>
+      </Button>
+    </Popconfirm>
   );
 }

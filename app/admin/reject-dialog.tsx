@@ -1,19 +1,55 @@
 "use client";
-import { useRef } from "react";
+import { useState } from "react";
+import { Button, Input, Modal } from "antd";
 import { decide } from "@/app/actions";
+
 type RejectAction = (data: FormData) => void | Promise<void>;
-export function RejectDialog({ requestId, action = decide, commentField = "rejectionReason", requestIdField = "requestId", title = "Refuser la demande" }: { requestId: string; action?: RejectAction; commentField?: string; requestIdField?: string; title?: string }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  return <>
-    <button type="button" className="btn danger sm" onClick={() => ref.current?.showModal()}>Refuser</button>
-    <dialog ref={ref} className="details-dialog" onClick={(e) => { if (e.target === e.currentTarget) ref.current?.close(); }}>
-      <div className="details-sheet"><div className="details-head"><div><span className="eyebrow">Décision</span><h3>{title}</h3></div><button type="button" className="icon-btn" aria-label="Fermer" onClick={() => ref.current?.close()}>×</button></div>
-        <form action={action} className="panel-body stack">
-          <input type="hidden" name={requestIdField} value={requestId} /><input type="hidden" name="decision" value="reject" />
-          <label className="field"><span>Motif du refus</span><textarea name={commentField} required maxLength={500} placeholder="Expliquez brièvement la décision…" /></label>
-          <div className="rowbtwn"><button type="button" className="btn ghost sm" onClick={() => ref.current?.close()}>Annuler</button><button type="submit" className="btn danger sm">Confirmer le refus</button></div>
+
+export function RejectDialog({
+  requestId,
+  action = decide,
+  commentField = "rejectionReason",
+  requestIdField = "requestId",
+  title = "Refuser la demande",
+}: {
+  requestId: string;
+  action?: RejectAction;
+  commentField?: string;
+  requestIdField?: string;
+  title?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button danger size="small" onClick={() => setOpen(true)}>
+        Refuser
+      </Button>
+      <Modal title={title} open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden>
+        <form
+          action={action}
+          onSubmit={() => setOpen(false)}
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
+          <input type="hidden" name={requestIdField} value={requestId} />
+          <input type="hidden" name="decision" value="reject" />
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Motif du refus</span>
+            <Input.TextArea
+              name={commentField}
+              required
+              maxLength={500}
+              rows={4}
+              placeholder="Expliquez brièvement la décision…"
+            />
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={() => setOpen(false)}>Annuler</Button>
+            <Button danger htmlType="submit">
+              Confirmer le refus
+            </Button>
+          </div>
         </form>
-      </div>
-    </dialog>
-  </>;
+      </Modal>
+    </>
+  );
 }

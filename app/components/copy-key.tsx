@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { App } from "antd";
+import { CheckOutlined, CloseCircleOutlined, CopyOutlined, WarningOutlined } from "@ant-design/icons";
 
 const WINDOW_SECONDS = 15 * 60;
 
@@ -77,24 +78,12 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
             <div className="keybox">{secret}</div>
             <div className="copyrow">
               <button className="btn primary sm" onClick={copy}>
-                {copied ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="12" height="12" rx="2" />
-                    <path d="M5 15V5a2 2 0 0 1 2-2h8" />
-                  </svg>
-                )}
+                {copied ? <CheckOutlined /> : <CopyOutlined />}
                 {copied ? "Copié" : "Copier la clé"}
               </button>
             </div>
             <div className="warnline">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 3 2 20h20z" />
-                <path d="M12 9v5M12 17h.01" />
-              </svg>
+              <WarningOutlined />
               Cette clé ne réapparaîtra pas. Colle-la maintenant dans StreamFusion Reborn.
             </div>
           </>
@@ -108,10 +97,7 @@ export function CopyKey({ token, expiresAt }: { token: string; expiresAt: string
             </button>
             {error && (
               <div className="banner danger" style={{ marginTop: "var(--s4)", fontSize: 12.5 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M15 9l-6 6M9 9l6 6" />
-                </svg>
+                <CloseCircleOutlined />
                 <p>{error}</p>
               </div>
             )}

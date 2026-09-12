@@ -1,13 +1,15 @@
+import { Tag } from "antd";
+
 const LABELS: Record<string, [string, string]> = {
-  PENDING: ["pending", "En attente"],
-  APPROVED: ["approved", "Acceptée"],
-  KEY_READY: ["ready", "Clé prête"],
-  REJECTED: ["rejected", "Refusée"],
-  KEY_REVOKED: ["revoked", "Clé révoquée"],
-  ARCHIVED: ["archived", "Archivée"],
+  PENDING: ["gold", "En attente"],
+  APPROVED: ["green", "Acceptée"],
+  KEY_READY: ["blue", "Clé prête"],
+  REJECTED: ["red", "Refusée"],
+  KEY_REVOKED: ["volcano", "Clé révoquée"],
+  ARCHIVED: ["default", "Archivée"],
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const [cls, label] = LABELS[status] ?? ["archived", status];
-  return <span className={`badge ${cls}`}>{label}</span>;
+  const [color, label] = LABELS[status] ?? ["default", status];
+  return <Tag color={color}>{label}</Tag>;
 }

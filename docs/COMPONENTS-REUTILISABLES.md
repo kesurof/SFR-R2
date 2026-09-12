@@ -56,6 +56,7 @@ des vérifications indirectes lorsqu'aucun test dédié n'existe.
 | Validation de l'environnement | Helper de validation | `lib/env.ts` | Valide et met en cache la configuration avec Zod. | `validateEnv`, `resetEnvCache` | Démarrage, routes et intégrations. | Ne jamais contourner la validation ni documenter de secrets réels. | `tests/env.test.ts` |
 | Actions typées | Abstraction technique | `lib/safe-action.ts` | Clients `next-safe-action`, middlewares d'autorisation et adaptateur `formAction` vers `<form action>`. | `actionClient`, `memberAction`, `adminAction`, `approverAction`, `formAction`, `errorMessage` | `app/actions.ts`. | Définir les actions dans un module `"use server"` ; conserver le post-redirect-get et ne pas exposer de message interne. | `tests/action-schemas.test.ts` |
 | Schémas d'actions | Helper de validation | `lib/action-schemas.ts` | Schémas `FormData` des Server Actions, déléguant aux règles pures `lib/*-rules.ts`. | `sponsorshipFormSchema`, `accessRequestFormSchema`, `notificationSettingsSchema`, etc. | `app/actions.ts` et leurs tests. | Ne pas dupliquer une règle métier : appeler la fonction pure existante. | `tests/action-schemas.test.ts` |
+| Champs sensibles — opt-out gestionnaires de mots de passe | Helper partagé | `app/components/anti-autofill.ts` | Attributs `data-*` empêchant Bitwarden, 1Password, LastPass, Dashlane et Proton Pass de proposer l'enregistrement d'un champ. | `ANTI_AUTOFILL_PROPS` | Champs « Nom Discord » et « Clé complète » de la restauration d'accès. | Étendre ce helper plutôt que recopier les attributs ; réserver aux champs qui ne doivent pas être mémorisés. | `tests/anti-autofill.test.tsx` |
 
 ## Composants propres à une fonctionnalité
 
@@ -69,10 +70,10 @@ une seconde implémentation partageant réellement le même contrat métier.
 | `AccessRequestDetails` | Composant métier | `app/demandes-acces/access-request-details.tsx` | Détails d'une demande d'accès directe dans un `Drawer` Ant Design. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `RequestDetails` | Composant métier | `app/admin/request-details.tsx` | Détails d'une demande de parrainage dans un `Drawer` Ant Design. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `RequestTable` | Composant métier | `app/admin/request-table.tsx` | `Table` Ant Design des demandes de parrainage de l'administration. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
-| `UserTable` | Composant métier | `app/admin/user-table.tsx` | `Table` Ant Design des utilisateurs Discord et de leurs permissions ; elle compose `buildDiscordUserColumns`. | Aucun test dédié ; helpers couverts par `tests/discord-user-columns.test.ts`, puis `npm run typecheck`, `npm run build` |
+| `UserTable` | Composant métier | `app/admin/user-table.tsx` | `Table` Ant Design des utilisateurs Discord et de leurs permissions ; elle compose `buildDiscordUserColumns` et des filtres nommés (« Parrainage », « Approbation »). | Aucun test dédié ; helpers couverts par `tests/discord-user-columns.test.ts`, puis `npm run typecheck`, `npm run build` |
 | `AccessRequestTable` | Composant métier | `app/demandes-acces/access-request-table.tsx` | `Table` Ant Design d'instruction des demandes d'accès ; elle compose les colonnes Discord et le tri de statut. | Aucun test dédié ; règles et colonnes couvertes par `tests/access-request-rules.test.ts` et `tests/discord-user-columns-render.test.tsx`, puis `npm run typecheck`, `npm run build` |
-| `UserManagement` | Composant métier | `app/admin/user-management.tsx` | Section d'administration de la synchronisation et de la gestion des utilisateurs. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
-| `KeysTable` | Composant métier | `app/admin/keys-table.tsx` | `Table` Ant Design de l'historique des clés et des demandes de remplacement. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
+| `UserManagement` | Composant métier | `app/admin/user-management.tsx` | Section d'administration de la synchronisation, de la restauration d'accès et de la gestion des utilisateurs. | Aucun test dédié ; `tests/anti-autofill.test.tsx` couvre l'opt-out des champs sensibles, puis `npm run typecheck`, `npm run build` |
+| `KeysTable` | Composant métier | `app/admin/keys-table.tsx` | `Table` Ant Design de l'historique des clés et des demandes de remplacement, en présentation neutre (aucun surlignage de ligne). | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | `SponsorshipTable` | Composant métier | `app/parrainer/suivi/sponsorship-table.tsx` | `Table` Ant Design du suivi des parrainages d'un membre. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 
 ## Briques externes et choix actuels
@@ -86,7 +87,7 @@ pas installées et ne doivent pas être ajoutées par réflexe :
 | --- | --- | --- |
 | Tableaux complexes | TanStack Table | Ne pas introduire pour les tableaux actuels ; les besoins de tri, filtre et pagination restent limités et sont déjà factorisés par domaine. |
 | Très grandes listes | TanStack Virtual | Aucun volume observé ne le justifie. |
-| Formulaires | React Hook Form | Les formulaires utilisent les Server Actions et les contrôles HTML natifs ; conserver cette approche tant qu'elle reste lisible. |
+| Formulaires | React Hook Form | Les formulaires utilisent les Server Actions typées et les contrôles Ant Design ; conserver cette approche tant qu'elle reste lisible. |
 | Cache et mutations client | TanStack Query | Pas de cache client nécessaire pour les pages server-rendered actuelles. |
 | Authentification | Better Auth | Auth.js est déjà intégré et couvre le besoin. |
 | UI accessible | Ant Design 6 | Introduit par l'ADR 0005 ; composants cœur, thème et locale `fr_FR`. Pro Components écarté (pré-release). |
@@ -108,7 +109,7 @@ L'audit relève les points suivants sans créer d'abstraction prématurée :
 
 | Catégorie | Observation | Position actuelle |
 | --- | --- | --- |
-| Mutualisation potentielle | La clé et les valeurs du thème sont lues dans le bootstrap de `app/layout.tsx` et dans `ThemeToggle`. | Envisager un helper ou une constante partagée uniquement si un troisième usage apparaît ou si la logique évolue. |
+| Mutualisation potentielle | Le mode et la clé de thème sont centralisés dans `ThemeProvider` (`useThemeMode`), lus par `ThemeToggle` et les algorithmes Ant Design. | Source de vérité unique ; ne pas relire `localStorage` ou `data-theme` ailleurs. |
 | Mutualisation potentielle | `RequestTable`, `UserTable` et `AccessRequestTable` ont des patterns proches de filtres persistés, reset et pagination. | Conserver les contrats métier locaux ; extraire seulement une brique dont l'API supprimerait une duplication mesurable. |
 | Mutualisation potentielle | `ConfirmSubmit`, `RejectDialog`, `RequestDetails` et `AccessRequestDetails` s'appuient sur les overlays Ant Design (`Popconfirm`, `Modal`, `Drawer`). | Ne pas fusionner leurs contrats : confirmation destructive, motif obligatoire et affichage de détail sont des responsabilités différentes. |
 | Mutualisation potentielle | Certains formulaires utilisent encore des boutons natifs alors que `PendingButton` existe. | Harmoniser lors d'une modification fonctionnelle de ces formulaires ; ne pas lancer une migration isolée uniquement documentaire. |

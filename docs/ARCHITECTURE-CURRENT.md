@@ -42,6 +42,9 @@ décident des demandes, restaurent manuellement des accès, enregistrent, rempla
 les clés et configurent les notifications Discord. Un membre non administrateur ne peut parrainer
 qu'après obtention du droit correspondant.
 
+Dans la console d'administration, les indicateurs de synthèse (demandes en attente, clés actives,
+notifications à traiter, membres synchronisés) renvoient vers la vue correspondante.
+
 ## Flux métier
 
 ### Demande d’accès directe
@@ -164,6 +167,10 @@ Le proxy applique un nonce CSP par requête, interdit l'encadrement et les
 objets, restreint les sources de scripts et de connexions, et ajoute les en-têtes de
 sécurité usuels. L'en-tête HSTS est envoyé pour les requêtes HTTPS en production.
 
+Les champs de saisie destinés à des secrets, notamment la restauration manuelle d'un accès,
+exposent les attributs d'opt-out des gestionnaires de mots de passe (`ANTI_AUTOFILL_PROPS`)
+pour éviter leur mémorisation automatique.
+
 Les valeurs de configuration et leur usage opérationnel sont documentés dans
 `.env.example` et les guides de déploiement ; les secrets réels ne sont pas suivis
 par Git.
@@ -180,6 +187,6 @@ GHCR privée multi-architecture `amd64` et `arm64`, puis crée le manifeste asso
 
 Les tests Vitest couvrent les règles de workflow, le chiffrement, la validation de
 configuration, le rate-limit, l'appartenance Discord, les paramètres de
-notifications, les snowflakes Discord, le proxy CSP, le thème Ant Design et les
-schémas d'actions. Les commandes de
+notifications, les snowflakes Discord, le proxy CSP, le thème Ant Design, les
+schémas d'actions et les attributs anti-gestionnaires de mots de passe. Les commandes de
 référence sont `npm test`, `npm run typecheck` et, lorsque pertinent, `npm run build`.

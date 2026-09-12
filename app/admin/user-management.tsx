@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { UserTable } from "@/app/admin/user-table";
 import { FormField } from "@/app/components/form-field";
 import { PendingButton } from "@/app/components/pending-button";
+import { ANTI_AUTOFILL_PROPS } from "@/app/components/anti-autofill";
 
 export async function UserManagement() {
   const [users, sponsorCount, syncState] = await Promise.all([
@@ -79,12 +80,7 @@ export async function UserManagement() {
                   required
                   autoComplete="off"
                   placeholder="Nom utilisé si l’utilisateur est nouveau"
-                  data-bwignore
-                  data-1p-ignore
-                  data-lpignore="true"
-                  data-form-type="other"
-                  data-protonpass-ignore
-                  data-dashlane-ignore
+                  {...ANTI_AUTOFILL_PROPS}
                 />
               </FormField>
               <FormField
@@ -97,18 +93,7 @@ export async function UserManagement() {
                 <Input name="serverNickname" placeholder="Pseudo affiché sur le serveur" />
               </FormField>
               <FormField label="Clé complète">
-                <Password
-                  name="secret"
-                  required
-                  autoComplete="new-password"
-                  placeholder="Clé R2 à restaurer"
-                  data-bwignore
-                  data-1p-ignore
-                  data-lpignore="true"
-                  data-form-type="other"
-                  data-protonpass-ignore
-                  data-dashlane-ignore
-                />
+                <Password name="secret" required autoComplete="new-password" placeholder="Clé R2 à restaurer" {...ANTI_AUTOFILL_PROPS} />
               </FormField>
             </div>
           </form>

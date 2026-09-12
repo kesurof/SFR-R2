@@ -21,20 +21,23 @@ Adopter `next-safe-action@8` avec Zod pour définir des actions serveur typées 
 
 - un module `lib/safe-action.ts` fournit les clients et des middlewares d'autorisation
   réutilisant `requireMember`, `requireAdmin` et `requireAccessApprover` ;
-- les schémas Zod sont déclarés dans les modules `lib/*-rules.ts` et délèguent aux
-  fonctions pures existantes, qui restent la source de vérité unique ;
+- les schémas Zod sont déclarés dans `lib/action-schemas.ts` et délèguent aux
+  fonctions pures `lib/*-rules.ts`, qui restent la source de vérité unique ;
 - le parsing `FormData` manuel et le helper `field()` sont supprimés ;
 - les erreurs de validation et les erreurs serveur deviennent typées
-  (`validationErrors`, `serverError`) au lieu de codes d'URL et de sous-chaînes ;
-- le schéma post-redirect-get est conservé pour les succès ; le fonctionnement sans
-  JavaScript est préservé via les API `useActionState` de React.
+  (`validationErrors`, `serverError`) au lieu de sous-chaînes de message ;
+- un adaptateur `formAction` relie chaque action typée à l'API `<form action>` :
+  il redirige vers un code/URL d'erreur en cas d'échec et laisse passer le
+  `redirect()` de succès, ce qui conserve le post-redirect-get et le fonctionnement
+  sans JavaScript, sans réécrire les formulaires en composants clients.
 
 ## Conséquences
 
-- Le contrat des actions change : les formulaires clients doivent être adaptés, ainsi
-  que `FlashToasts` et les dialogues qui injectaient des champs cachés.
-- Les tests des règles pures restent inchangés ; des tests de schémas et d'actions
-  sont ajoutés.
+- Le contrat interne des actions change : les entrées sont validées par des schémas
+  Zod, mais les formulaires conservent `<form action>` et `FlashToasts` reste le
+  canal d'affichage des codes d'URL.
+- Les tests des règles pures restent inchangés ; des tests de schémas et
+  d'intégration `next-safe-action` + Zod sont ajoutés.
 - Le catalogue des composants et l'architecture actuelle sont mis à jour après
   livraison.
 - Les routes API JSON existantes (`/api/claims`, `/api/claim/[token]`) restent des

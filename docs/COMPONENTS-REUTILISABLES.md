@@ -53,6 +53,8 @@ des vérifications indirectes lorsqu'aucun test dédié n'existe.
 | Gardes d'accès et identité | Abstraction technique | `lib/access.ts` | Résout l'identité et protège les pages/actions selon les rôles et l'appartenance Discord. | `identity`, `isAdmin`, `requireAdmin`, `requireMember`, `requireAccessApprover`, `ensureUser`, `audit` | Pages et actions serveur. | Répéter les vérifications côté serveur ; ne pas se fier uniquement au masquage de l'interface. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | Client Prisma partagé | Abstraction d'accès aux données | `lib/prisma.ts` | Fournit une instance Prisma réutilisable et compatible avec le développement Next.js. | `prisma` | Pages, actions et workflows serveur. | Serveur uniquement ; Prisma et le schéma restent la source de vérité des données. | Aucun test dédié ; `npm run typecheck`, `npm run build` |
 | Validation de l'environnement | Helper de validation | `lib/env.ts` | Valide et met en cache la configuration avec Zod. | `validateEnv`, `resetEnvCache` | Démarrage, routes et intégrations. | Ne jamais contourner la validation ni documenter de secrets réels. | `tests/env.test.ts` |
+| Actions typées | Abstraction technique | `lib/safe-action.ts` | Clients `next-safe-action`, middlewares d'autorisation et adaptateur `formAction` vers `<form action>`. | `actionClient`, `memberAction`, `adminAction`, `approverAction`, `formAction`, `errorMessage` | `app/actions.ts`. | Définir les actions dans un module `"use server"` ; conserver le post-redirect-get et ne pas exposer de message interne. | `tests/action-schemas.test.ts` |
+| Schémas d'actions | Helper de validation | `lib/action-schemas.ts` | Schémas `FormData` des Server Actions, déléguant aux règles pures `lib/*-rules.ts`. | `sponsorshipFormSchema`, `accessRequestFormSchema`, `notificationSettingsSchema`, etc. | `app/actions.ts` et leurs tests. | Ne pas dupliquer une règle métier : appeler la fonction pure existante. | `tests/action-schemas.test.ts` |
 
 ## Composants propres à une fonctionnalité
 
@@ -89,7 +91,7 @@ pas installées et ne doivent pas être ajoutées par réflexe :
 | UI accessible | Ant Design 6 | Introduit par l'ADR 0005 ; composants cœur, thème et locale `fr_FR`. Pro Components écarté (pré-release). |
 | UI accessible | shadcn/ui / Radix | Écarté au profit d'Ant Design par l'ADR 0005. |
 | État dans l'URL | `nuqs` | Les paramètres actuels sont peu nombreux et utilisent les API Next.js natives. |
-| Server Actions typées | `next-safe-action` | Les actions existantes restent simples ; à réévaluer seulement si la duplication de validation et de gestion d'erreur augmente. |
+| Server Actions typées | `next-safe-action` | Adopté (ADR 0006) avec Zod et `zod-form-data` ; les formulaires restent natifs via l'adaptateur `formAction`. |
 | Notifications | Sonner | Non retenu : `App`/`notification` d'Ant Design assure les notifications (ADR 0005). |
 | Stockage local structuré | Dexie | `localStorage` et `sessionStorage` couvrent les besoins actuels ; aucune donnée offline structurée n'est présente. |
 | Accès aux données | Drizzle ORM | Prisma est déjà la source de vérité du schéma et des migrations. |

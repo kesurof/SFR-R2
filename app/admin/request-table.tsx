@@ -1,5 +1,6 @@
 "use client";
 import { useMemo } from "react";
+import { Button, Input, Select, Space, Table, Typography, type TableColumnsType } from "antd";
 import { archiveRequest, decide, deleteRequest, storeKey } from "@/app/actions";
 import { StatusBadge } from "@/app/components/status-badge";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
@@ -7,7 +8,17 @@ import { usePersistentState } from "@/app/components/use-persistent-state";
 import { RequestDetails, type RequestDetailsData } from "@/app/admin/request-details";
 import { RejectDialog } from "@/app/admin/reject-dialog";
 
-const DEFAULT_FILTERS = { query: "", status: "ALL", sort: "newest" };
+const DEFAULT_FILTERS = { query: "", status: "ALL" };
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "Tous les statuts" },
+  { value: "PENDING", label: "En attente" },
+  { value: "APPROVED", label: "Acceptées" },
+  { value: "KEY_READY", label: "Clé prête" },
+  { value: "REJECTED", label: "Refusées" },
+  { value: "KEY_REVOKED", label: "Clé révoquée" },
+  { value: "ARCHIVED", label: "Archivées" },
+];
 
 type RequestRow = {
   id: string;
@@ -21,144 +32,142 @@ type RequestRow = {
 } & RequestDetailsData;
 
 export function RequestTable({ requests }: { requests: RequestRow[] }) {
-  const [f, setF] = usePersistentState("sfr:admin:requests-filters", DEFAULT_FILTERS);
+  const [f, setF] = usePersistentState("sfr:admin:requests-filters-v2", DEFAULT_FILTERS);
   const patch = (p: Partial<typeof f>) => setF((prev) => ({ ...prev, ...p }));
 
   const rows = useMemo(() => {
     const q = f.query.trim().toLocaleLowerCase();
-    return requests
-      .filter(
-        (row) =>
-          (f.status === "ALL" || row.status === f.status) &&
-          (!q ||
-            `${row.referredName} ${row.referredId} ${row.sponsorName} ${row.relationship}`
-              .toLocaleLowerCase()
-              .includes(q)),
-      )
-      .sort((a, b) =>
-        f.sort === "oldest" ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt),
-      );
-  }, [requests, f.query, f.status, f.sort]);
+    return requests.filter(
+      (row) =>
+        (f.status === "ALL" || row.status === f.status) &&
+        (!q ||
+          `${row.referredName} ${row.referredId} ${row.sponsorName} ${row.relationship}`
+            .toLocaleLowerCase()
+            .includes(q)),
+    );
+  }, [requests, f.query, f.status]);
+
+  const columns: TableColumnsType<RequestRow> = [
+    { title: "Statut", dataIndex: "status", key: "status", render: (status: string) => <StatusBadge status={status} /> },
+    {
+      title: "Filleul",
+      key: "referred",
+      render: (_, row) => (
+        <>
+          <strong>{row.referredName}</strong>
+          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+            {row.referredId}
+          </Typography.Text>
+        </>
+      ),
+    },
+    { title: "Parrain", dataIndex: "sponsorName", key: "sponsor" },
+    {
+      title: "Relation",
+      key: "relationship",
+      render: (_, row) => (
+        <>
+          {row.relationship}
+          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+            {row.knownSince}
+          </Typography.Text>
+        </>
+      ),
+    },
+    {
+      title: "Créée",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
+      defaultSortOrder: "descend",
+      render: (createdAt: string) => new Date(createdAt).toLocaleDateString("fr-FR"),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, row) => (
+        <Space size={4} wrap>
+          <RequestDetails request={row} />
+          {row.status === "PENDING" && (
+            <>
+              <form action={decide}>
+                <input type="hidden" name="requestId" value={row.id} />
+                <Button type="primary" size="small" htmlType="submit" name="decision" value="approve">
+                  Accepter
+                </Button>
+              </form>
+              <RejectDialog requestId={row.id} />
+            </>
+          )}
+          {row.status === "APPROVED" && (
+            <form action={storeKey} style={{ display: "flex", gap: 4 }}>
+              <input type="hidden" name="requestId" value={row.id} />
+              <Input.Password
+                name="secret"
+                placeholder="Clé à remettre"
+                required
+                autoComplete="off"
+                size="small"
+                style={{ width: 150 }}
+              />
+              <Button type="primary" size="small" htmlType="submit">
+                Enregistrer
+              </Button>
+            </form>
+          )}
+          {row.status !== "ARCHIVED" && row.status !== "KEY_READY" && (
+            <form action={archiveRequest}>
+              <input type="hidden" name="requestId" value={row.id} />
+              <Button size="small" htmlType="submit">
+                Archiver
+              </Button>
+            </form>
+          )}
+          <form action={deleteRequest}>
+            <input type="hidden" name="requestId" value={row.id} />
+            <ConfirmSubmit
+              title="Supprimer cette demande ?"
+              message="La demande et son historique seront définitivement effacés."
+              confirmLabel="Supprimer"
+            >
+              Supprimer
+            </ConfirmSubmit>
+          </form>
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <>
-      <div className="toolbar">
-        <input
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Input
           type="search"
           aria-label="Rechercher une demande"
           placeholder="Rechercher un filleul, parrain ou ID…"
           value={f.query}
           onChange={(e) => patch({ query: e.target.value })}
+          style={{ width: 280 }}
         />
-        <select aria-label="Filtrer par statut" value={f.status} onChange={(e) => patch({ status: e.target.value })}>
-          <option value="ALL">Tous les statuts</option>
-          <option value="PENDING">En attente</option>
-          <option value="APPROVED">Acceptées</option>
-          <option value="KEY_READY">Clé prête</option>
-          <option value="REJECTED">Refusées</option>
-          <option value="KEY_REVOKED">Clé révoquée</option>
-          <option value="ARCHIVED">Archivées</option>
-        </select>
-        <select aria-label="Trier" value={f.sort} onChange={(e) => patch({ sort: e.target.value })}>
-          <option value="newest">Plus récentes</option>
-          <option value="oldest">Plus anciennes</option>
-        </select>
-        <span className="count">
+        <Select
+          aria-label="Filtrer par statut"
+          value={f.status}
+          onChange={(value) => patch({ status: value })}
+          options={STATUS_OPTIONS}
+          style={{ width: 180 }}
+        />
+        <Typography.Text type="secondary">
           {rows.length}/{requests.length}
-        </span>
-      </div>
-      <div className="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Statut</th>
-              <th>Filleul</th>
-              <th>Parrain</th>
-              <th>Relation</th>
-              <th>Créée</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <StatusBadge status={row.status} />
-                </td>
-                <td>
-                  <strong>{row.referredName}</strong>
-                  <span className="sub">{row.referredId}</span>
-                </td>
-                <td>{row.sponsorName}</td>
-                <td>
-                  {row.relationship}
-                  <span className="sub" style={{ fontFamily: "var(--font)" }}>
-                    {row.knownSince}
-                  </span>
-                </td>
-                <td className="mono faint">{new Date(row.createdAt).toLocaleDateString("fr-FR")}</td>
-                <td>
-                    <div className="act-cell">
-                    <RequestDetails request={row} />
-                    {row.status === "PENDING" && (
-                      <>
-                      <form action={decide}>
-                        <input type="hidden" name="requestId" value={row.id} />
-                        <button name="decision" value="approve" className="btn primary sm">
-                          Accepter
-                        </button>
-                      </form>
-                      <RejectDialog requestId={row.id} />
-                      </>
-                    )}
-                    {row.status === "APPROVED" && (
-                      <form action={storeKey}>
-                        <input type="hidden" name="requestId" value={row.id} />
-                        <input
-                          name="secret"
-                          type="password"
-                          placeholder="Clé à remettre"
-                          required
-                          autoComplete="off"
-                          className="mono"
-                          style={{
-                            width: "10rem",
-                            height: 30,
-                            padding: "0 8px",
-                            fontSize: 12,
-                            background: "var(--sunken)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            color: "var(--text)",
-                          }}
-                        />
-                        <button className="btn primary sm">Enregistrer</button>
-                      </form>
-                    )}
-                    {row.status !== "ARCHIVED" && row.status !== "KEY_READY" && (
-                      <form action={archiveRequest}>
-                        <input type="hidden" name="requestId" value={row.id} />
-                        <button className="btn ghost sm">Archiver</button>
-                      </form>
-                    )}
-                    <form action={deleteRequest}>
-                      <input type="hidden" name="requestId" value={row.id} />
-                      <ConfirmSubmit
-                        title="Supprimer cette demande ?"
-                        message="La demande et son historique seront définitivement effacés."
-                        confirmLabel="Supprimer"
-                      >
-                        Supprimer
-                      </ConfirmSubmit>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && <p className="empty-state">Aucune demande correspondante.</p>}
-      </div>
+        </Typography.Text>
+      </Space>
+      <Table<RequestRow>
+        rowKey="id"
+        columns={columns}
+        dataSource={rows}
+        pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
+        scroll={{ x: "max-content" }}
+        locale={{ emptyText: "Aucune demande correspondante." }}
+      />
     </>
   );
 }

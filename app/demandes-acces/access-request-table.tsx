@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { Button, Input, Select, Space, Table, Typography, type TableColumnsType } from "antd";
 import { decideAccessRequestAction, storeAccessRequestKey } from "@/app/actions";
 import { RejectDialog } from "@/app/admin/reject-dialog";
-import { DiscordUserColumns, SortHeader } from "@/app/components/discord-user-columns";
+import { buildDiscordUserColumns } from "@/app/components/discord-user-columns";
 import { StatusBadge } from "@/app/components/status-badge";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import { AccessRequestDetails } from "@/app/demandes-acces/access-request-details";
-import { compareDiscordUsers, DEFAULT_DISCORD_USER_FILTERS, matchesDiscordUserFilters, type DiscordUserColumnFilters, type DiscordUserSortKey, type DiscordUserTableRow, type SortDirection } from "@/lib/discord-user-columns";
+import { matchesDiscordUserFilters, type DiscordUserTableRow } from "@/lib/discord-user-columns";
 import { compareAccessRequestStatuses, type AccessRequestStatus } from "@/lib/access-request-rules";
 
 const ACCESS_REQUEST_DISCORD_COLUMNS = ["nickname", "username", "server", "account"] as const;
@@ -31,20 +32,18 @@ type Row = {
 type FilterState = {
   query: string;
   status: "ALL" | AccessRequestStatus;
-  sort: "newest" | "oldest";
-  discord: DiscordUserColumnFilters;
-  sortKey: DiscordUserSortKey | "status" | null;
-  sortDir: SortDirection;
 };
 
-const DEFAULT_FILTERS: FilterState = {
-  query: "",
-  status: "ALL",
-  sort: "newest",
-  discord: DEFAULT_DISCORD_USER_FILTERS,
-  sortKey: null,
-  sortDir: "asc",
-};
+const DEFAULT_FILTERS: FilterState = { query: "", status: "ALL" };
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "Tous les statuts" },
+  { value: "PENDING", label: "En attente" },
+  { value: "APPROVED", label: "Acceptées" },
+  { value: "KEY_READY", label: "Clé prête" },
+  { value: "REJECTED", label: "Refusées" },
+  { value: "KEY_REVOKED", label: "Clé révoquée" },
+];
 
 export function AccessRequestTable({
   requests,
@@ -59,9 +58,8 @@ export function AccessRequestTable({
   focusedRequestStatus?: AccessRequestStatus;
   initialStatus?: AccessRequestStatus;
 }) {
-  const [filters, setFilters] = usePersistentState("sfr:access-requests-filters-v3", DEFAULT_FILTERS);
+  const [filters, setFilters] = usePersistentState("sfr:access-requests-filters-v4", DEFAULT_FILTERS);
   const patch = (next: Partial<FilterState>) => setFilters((previous) => ({ ...previous, ...next }));
-  const discordRows = useMemo(() => requests.map((request) => request.discordUser), [requests]);
 
   useEffect(() => {
     if (focusedRequestId && focusedRequestStatus) {
@@ -73,88 +71,134 @@ export function AccessRequestTable({
 
   const rows = useMemo(() => {
     const query = filters.query.trim().toLocaleLowerCase();
-    const filtered = requests.filter((row) => {
+    return requests.filter((row) => {
       if (filters.status !== "ALL" && row.status !== filters.status) return false;
-      if (!matchesDiscordUserFilters(row.discordUser, filters.discord)) return false;
-      if (query && !`${row.requesterName} ${row.requesterId} ${row.approverName ?? ""} ${row.discordUser.username} ${row.discordUser.discordRoles}`.toLocaleLowerCase().includes(query)) return false;
+      if (!matchesDiscordUserFilters(row.discordUser, { nickname: "", username: "", discordId: "", role: "" })) return false;
+      if (
+        query &&
+        !`${row.requesterName} ${row.requesterId} ${row.approverName ?? ""} ${row.discordUser.username} ${row.discordUser.discordRoles}`
+          .toLocaleLowerCase()
+          .includes(query)
+      )
+        return false;
       return true;
     });
-
-    if (filters.sortKey === "status") {
-      filtered.sort((a, b) => compareAccessRequestStatuses(a.status, b.status, filters.sortDir));
-    } else if (filters.sortKey) {
-      filtered.sort((a, b) => compareDiscordUsers(a.discordUser, b.discordUser, filters.sortKey as DiscordUserSortKey, filters.sortDir));
-    } else {
-      filtered.sort((a, b) => filters.sort === "oldest" ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt));
-    }
-    return filtered;
   }, [requests, filters]);
+
+  const columns: TableColumnsType<Row> = [
+    {
+      title: "Statut",
+      dataIndex: "status",
+      key: "status",
+      sorter: (a, b) => compareAccessRequestStatuses(a.status, b.status, "asc"),
+      render: (status: string) => <StatusBadge status={status} />,
+    },
+    ...buildDiscordUserColumns<Row>({
+      visibleColumns: ACCESS_REQUEST_DISCORD_COLUMNS,
+      getUser: (row) => row.discordUser,
+    }),
+    {
+      title: "Soumise",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
+      defaultSortOrder: "descend",
+      render: (createdAt: string) => <span className="mono faint">{new Date(createdAt).toLocaleDateString("fr-FR")}</span>,
+    },
+    {
+      title: "Décision",
+      key: "decision",
+      render: (_, row) =>
+        row.decidedAt ? (
+          <>
+            <strong>{row.approverName || "Inconnu"}</strong>
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              {new Date(row.decidedAt).toLocaleDateString("fr-FR")}
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              {row.decisionComment || "Sans commentaire"}
+            </Typography.Text>
+          </>
+        ) : (
+          <span className="faint">—</span>
+        ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, row) => (
+        <Space size={4} wrap>
+          <AccessRequestDetails
+            request={{
+              name: row.requesterName,
+              id: row.requesterId,
+              status: row.status,
+              communities: row.communities,
+              motivations: row.motivations,
+              selfHosting: row.selfHosting,
+              discovery: row.discovery,
+            }}
+          />
+          {row.status === "PENDING" && (
+            <>
+              <form action={decideAccessRequestAction}>
+                <input type="hidden" name="requestId" value={row.id} />
+                <input type="hidden" name="decision" value="approve" />
+                <Button type="primary" size="small" htmlType="submit">
+                  Accepter
+                </Button>
+              </form>
+              <RejectDialog requestId={row.id} action={decideAccessRequestAction} commentField="decisionComment" />
+            </>
+          )}
+          {admin && row.status === "APPROVED" && (
+            <form action={storeAccessRequestKey} style={{ display: "flex", gap: 4 }}>
+              <input type="hidden" name="requestId" value={row.id} />
+              <Input.Password name="secret" required autoComplete="off" placeholder="Clé à remettre" size="small" style={{ width: 150 }} />
+              <Button type="primary" size="small" htmlType="submit">
+                Ajouter la clé
+              </Button>
+            </form>
+          )}
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <>
-      <div className="toolbar">
-        <input type="search" aria-label="Rechercher une demande d’accès" placeholder="Rechercher un demandeur ou un approbateur…" value={filters.query} onChange={(event) => patch({ query: event.target.value })} />
-        <select aria-label="Trier par date de demande" value={filters.sort} onChange={(event) => patch({ sort: event.target.value as FilterState["sort"], sortKey: null })}>
-          <option value="newest">Plus récentes</option>
-          <option value="oldest">Plus anciennes</option>
-        </select>
-        <button type="button" className="btn ghost sm" onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Réinitialiser les filtres</button>
-        <span className="count">{rows.length}/{requests.length}</span>
-      </div>
-
-      <div className="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th><SortHeader label="Statut" active={filters.sortKey === "status"} direction={filters.sortDir} onClick={() => patch({ sortKey: "status", sortDir: filters.sortKey === "status" && filters.sortDir === "asc" ? "desc" : "asc" })} /></th>
-              <DiscordUserColumns
-                kind="header"
-                visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS}
-                sortKey={filters.sortKey === "server" || filters.sortKey === "account" ? filters.sortKey : null}
-                sortDir={filters.sortDir}
-                onSort={(key) => patch({ sortKey: key, sortDir: filters.sortKey === key && filters.sortDir === "asc" ? "desc" : "asc" })}
-              />
-              <th>Soumise</th>
-              <th>Décision</th>
-              <th>Actions</th>
-            </tr>
-            <tr className="col-filter">
-              <th>
-                <select aria-label="Filtrer par statut" value={filters.status} onChange={(event) => patch({ status: event.target.value as FilterState["status"] })}>
-                  <option value="ALL">Tous les statuts</option>
-                  <option value="PENDING">En attente</option>
-                  <option value="APPROVED">Acceptées</option>
-                  <option value="KEY_READY">Clé prête</option>
-                  <option value="REJECTED">Refusées</option>
-                  <option value="KEY_REVOKED">Clé révoquée</option>
-                </select>
-              </th>
-              <DiscordUserColumns kind="filters" visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS} rows={discordRows} filters={filters.discord} onChange={(next) => patch({ discord: { ...filters.discord, ...next } })} />
-              <th />
-              <th />
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} style={row.id === focusedRequestId ? { outline: "2px solid var(--accent)" } : undefined}>
-                <td><StatusBadge status={row.status} /></td>
-                <DiscordUserColumns kind="cells" visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS} user={row.discordUser} />
-                <td className="mono faint">{new Date(row.createdAt).toLocaleDateString("fr-FR")}</td>
-                <td>{row.decidedAt ? <><strong>{row.approverName || "Inconnu"}</strong><span className="sub">{new Date(row.decidedAt).toLocaleDateString("fr-FR")}</span><span className="sub">{row.decisionComment || "Sans commentaire"}</span></> : <span className="faint">—</span>}</td>
-                <td>
-                  <div className="act-cell">
-                    <AccessRequestDetails request={{ name: row.requesterName, id: row.requesterId, status: row.status, communities: row.communities, motivations: row.motivations, selfHosting: row.selfHosting, discovery: row.discovery }} />
-                    {row.status === "PENDING" && <><form action={decideAccessRequestAction}><input type="hidden" name="requestId" value={row.id} /><input type="hidden" name="decision" value="approve" /><button className="btn primary sm">Accepter</button></form><RejectDialog requestId={row.id} action={decideAccessRequestAction} commentField="decisionComment" /></>}
-                    {admin && row.status === "APPROVED" && <form action={storeAccessRequestKey}><input type="hidden" name="requestId" value={row.id} /><input name="secret" type="password" required autoComplete="off" placeholder="Clé à remettre" className="mono" /><button className="btn primary sm">Ajouter la clé</button></form>}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && <p className="empty-state">Aucune demande correspondante.</p>}
-      </div>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Input
+          type="search"
+          aria-label="Rechercher une demande d’accès"
+          placeholder="Rechercher un demandeur ou un approbateur…"
+          value={filters.query}
+          onChange={(event) => patch({ query: event.target.value })}
+          style={{ width: 300 }}
+        />
+        <Select
+          aria-label="Filtrer par statut"
+          value={filters.status}
+          onChange={(value) => patch({ status: value as FilterState["status"] })}
+          options={STATUS_OPTIONS}
+          style={{ width: 180 }}
+        />
+        <Button onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Réinitialiser les filtres</Button>
+        <Typography.Text type="secondary">
+          {rows.length}/{requests.length}
+        </Typography.Text>
+      </Space>
+      <Table<Row>
+        rowKey="id"
+        columns={columns}
+        dataSource={rows}
+        pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
+        scroll={{ x: "max-content" }}
+        locale={{ emptyText: "Aucune demande correspondante." }}
+        onRow={(row) =>
+          row.id === focusedRequestId ? { style: { outline: "2px solid var(--accent)", outlineOffset: -2 } } : {}
+        }
+      />
     </>
   );
 }

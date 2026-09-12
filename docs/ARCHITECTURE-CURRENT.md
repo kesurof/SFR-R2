@@ -6,7 +6,7 @@
 ## Vue d'ensemble
 
 SFR-R2 est un portail privé pour remettre des clés d'accès au stockage R2 de
-StreamFusion Reborn. C'est une application unique Next.js 15 avec App Router,
+StreamFusion Reborn. C'est une application unique Next.js 16 avec App Router,
 rendue en image Docker autonome. Elle utilise SQLite, piloté par Prisma, et Discord
 pour l'authentification, la vérification d'appartenance et la synchronisation des
 membres.
@@ -159,7 +159,7 @@ Discord, identifiants Discord, clé de chiffrement de 32 octets encodée en base
 ainsi que les limites de rate-limit et de notifications. En production, une URL
 publique non locale doit être en HTTPS.
 
-Le middleware applique un nonce CSP par requête, interdit l'encadrement et les
+Le proxy applique un nonce CSP par requête, interdit l'encadrement et les
 objets, restreint les sources de scripts et de connexions, et ajoute les en-têtes de
 sécurité usuels. L'en-tête HSTS est envoyé pour les requêtes HTTPS en production.
 
@@ -179,5 +179,5 @@ GHCR privée multi-architecture `amd64` et `arm64`, puis crée le manifeste asso
 
 Les tests Vitest couvrent les règles de workflow, le chiffrement, la validation de
 configuration, le rate-limit, l'appartenance Discord, les paramètres de
-notifications, les snowflakes Discord et le middleware CSP. Les commandes de
+notifications, les snowflakes Discord et le proxy CSP. Les commandes de
 référence sont `npm test`, `npm run typecheck` et, lorsque pertinent, `npm run build`.

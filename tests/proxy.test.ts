@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNonce } from "../middleware";
+import { createNonce } from "../proxy";
 
 describe("CSP nonce", () => {
   it("génère des valeurs aléatoires compatibles CSP", () => {

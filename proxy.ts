@@ -8,7 +8,7 @@ export function createNonce() {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const value = createNonce();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", value);

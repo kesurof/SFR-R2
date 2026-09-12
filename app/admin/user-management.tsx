@@ -57,19 +57,35 @@ export async function UserManagement() {
         </Space>
 
         <div>
-          <Title level={5} style={{ marginBottom: 4 }}>
-            Restaurer un accès
-          </Title>
-          <Paragraph type="secondary" style={{ fontSize: 12 }}>
-            Recrée un utilisateur absent de la base et lui attribue immédiatement une clé active. La date retenue sera celle de la restauration.
-          </Paragraph>
-          <form action={restoreManualAccessAction}>
+          <form action={restoreManualAccessAction} autoComplete="off">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+              <div>
+                <Title level={5} style={{ margin: 0 }}>
+                  Restaurer un accès
+                </Title>
+                <Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
+                  Recrée un utilisateur absent de la base et lui attribue immédiatement une clé active. La date retenue sera celle de la restauration.
+                </Paragraph>
+              </div>
+              <PendingButton pendingLabel="Restauration…">Restaurer l’accès</PendingButton>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
               <FormField label="Discord ID">
                 <Input name="discordId" required inputMode="numeric" pattern="[0-9]{17,20}" placeholder="Identifiant Discord" />
               </FormField>
               <FormField label="Nom Discord">
-                <Input name="username" required placeholder="Nom utilisé si l’utilisateur est nouveau" />
+                <Input
+                  name="username"
+                  required
+                  autoComplete="off"
+                  placeholder="Nom utilisé si l’utilisateur est nouveau"
+                  data-bwignore
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
+                  data-protonpass-ignore
+                  data-dashlane-ignore
+                />
               </FormField>
               <FormField
                 label={
@@ -80,12 +96,20 @@ export async function UserManagement() {
               >
                 <Input name="serverNickname" placeholder="Pseudo affiché sur le serveur" />
               </FormField>
-              <FormField label="Clé complète" hint="Elle sera chiffrée immédiatement et ne sera jamais affichée dans l’historique.">
-                <Password name="secret" required autoComplete="new-password" placeholder="Clé R2 à restaurer" />
+              <FormField label="Clé complète">
+                <Password
+                  name="secret"
+                  required
+                  autoComplete="new-password"
+                  placeholder="Clé R2 à restaurer"
+                  data-bwignore
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
+                  data-protonpass-ignore
+                  data-dashlane-ignore
+                />
               </FormField>
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <PendingButton pendingLabel="Restauration…">Restaurer l’accès</PendingButton>
             </div>
           </form>
         </div>

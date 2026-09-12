@@ -172,24 +172,32 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
       <Row gutter={[16, 16]}>
         <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="Demandes en attente" value={pending} valueStyle={pending ? { color: "#cf1322" } : undefined} />
-          </Card>
+          <Link href="/admin?view=requests" style={{ display: "block", color: "inherit" }}>
+            <Card hoverable>
+              <Statistic title="Demandes en attente" value={pending} valueStyle={pending ? { color: "#cf1322" } : undefined} />
+            </Card>
+          </Link>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="Clés actives" value={activeKeyCount} />
-          </Card>
+          <Link href="/admin?view=keys" style={{ display: "block", color: "inherit" }}>
+            <Card hoverable>
+              <Statistic title="Clés actives" value={activeKeyCount} />
+            </Card>
+          </Link>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="Notifications à traiter" value={pendingNotifications + failedNotifications} />
-          </Card>
+          <Link href="/admin?view=settings" style={{ display: "block", color: "inherit" }}>
+            <Card hoverable>
+              <Statistic title="Notifications à traiter" value={pendingNotifications + failedNotifications} />
+            </Card>
+          </Link>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="Membres synchronisés" value={memberCount} />
-          </Card>
+          <Link href="/admin?view=users" style={{ display: "block", color: "inherit" }}>
+            <Card hoverable>
+              <Statistic title="Membres synchronisés" value={memberCount} />
+            </Card>
+          </Link>
         </Col>
       </Row>
 

@@ -110,13 +110,15 @@ export default async function Home() {
         </Space>
       </Card>
 
-      <Steps
-        items={[
-          { title: "Parrainage", description: "Un membre autorisé te recommande en expliquant le contexte à l'équipe." },
-          { title: "Validation équipe", description: "Un administrateur examine la demande et prépare ta clé d'accès." },
-          { title: "Clé R2", description: "Tu récupères une clé unique à renseigner dans la configuration de StreamFusion Reborn." },
-        ]}
-      />
+      <Card title="Les étapes">
+        <Steps
+          items={[
+            { title: "Parrainage", description: "Un membre autorisé te recommande en expliquant le contexte à l'équipe." },
+            { title: "Validation équipe", description: "Un administrateur examine la demande et prépare ta clé d'accès." },
+            { title: "Clé R2", description: "Tu récupères une clé unique à renseigner dans la configuration de StreamFusion Reborn." },
+          ]}
+        />
+      </Card>
     </Space>
   );
 }

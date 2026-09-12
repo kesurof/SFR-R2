@@ -21,6 +21,10 @@ const NOTICES: Record<string, [ToastType, string, string]> = {
   delete_error: ["error", "Action impossible", "Impossible de supprimer cette demande."],
   key_error: ["error", "Action impossible", "Impossible d'enregistrer la clé."],
   key_revoke_error: ["error", "Action impossible", "Impossible de révoquer cette clé."],
+  key_replaced: ["success", "Clé remplacée", "La nouvelle clé est disponible pour le membre."],
+  key_replacement_rejected: ["success", "Demande refusée", "Le demandeur a été informé du motif."],
+  key_replacement_error: ["error", "Action impossible", "Impossible de traiter cette demande de remplacement."],
+  key_replacement_reason_required: ["error", "Motif obligatoire", "Indique un motif avant de refuser la demande."],
   settings_saved: ["success", "Configuration enregistrée", "Les nouveaux réglages sont pris en compte sans redémarrage."],
   webhook_cleared: ["success", "Webhook supprimé", "Les nouvelles demandes ne seront plus envoyées au webhook."],
   settings_error: ["error", "Configuration invalide", "Vérifie l’intervalle et l’URL du webhook Discord."],
@@ -32,6 +36,7 @@ const NOTICES: Record<string, [ToastType, string, string]> = {
   access_request_key_saved: ["success", "Clé enregistrée", "Elle est disponible pour le demandeur."],
   access_request_error: ["error", "Action impossible", "La demande a déjà été traitée ou le commentaire est invalide."],
   access_request_key_error: ["error", "Action impossible", "Impossible d’enregistrer la clé."],
+  key_replacement_requested: ["success", "Demande envoyée", "Les administrateurs ont été prévenus."],
   approver_granted: ["success", "Droit d’approbation accordé", ""],
   approver_revoked: ["success", "Droit d’approbation retiré", ""],
 };

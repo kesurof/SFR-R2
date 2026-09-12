@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { clearAccessRequestWebhook, revoke, updateNotificationSettings } from "@/app/actions";
+import { clearAccessRequestWebhook, rejectKeyReplacementAction, replaceKeyAction, revoke, updateNotificationSettings } from "@/app/actions";
 import { UserManagement } from "@/app/admin/user-management";
 import { RequestTable } from "@/app/admin/request-table";
+import { RejectDialog } from "@/app/admin/reject-dialog";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
+import { PendingButton } from "@/app/components/pending-button";
 import { identity, isAdmin } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { getNotificationSettings } from "@/lib/settings";
@@ -37,11 +39,19 @@ async function fetchAudits(requestIds: string[]): Promise<AuditRow[]> {
   return rows;
 }
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ view?: string; replacementRequest?: string }> }) {
   const actor = await identity();
   if (!isAdmin(actor.discordId)) return null;
   const query = await searchParams;
   const view: View = VIEWS.some((v) => v.id === query.view) ? (query.view as View) : "requests";
+  const replacementRequestId = query.replacementRequest;
+
+  const replacementRequests = await prisma.keyReplacementRequest.findMany({
+    where: replacementRequestId ? { OR: [{ status: "PENDING" }, { id: replacementRequestId }] } : { status: "PENDING" },
+    include: { user: true, currentKey: true },
+    orderBy: { createdAt: "desc" },
+    take: KEYS_LIMIT,
+  });
 
   const [requests, keys, memberCount, pending, activeKeyCount, requestTotal, keyTotal, notificationStats] = await Promise.all([
     prisma.sponsorshipRequest.findMany({
@@ -58,6 +68,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     prisma.discordNotification.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
 
+  const replacementKeyIds = replacementRequests.map((request) => request.currentKeyId);
+  const extraKeys = replacementKeyIds.length
+    ? await prisma.accessKey.findMany({ where: { id: { in: replacementKeyIds } }, include: { user: true } })
+    : [];
+  const displayKeys = [...keys, ...extraKeys.filter((key) => !keys.some((loaded) => loaded.id === key.id))];
+  const replacementByKeyId = new Map(replacementRequests.map((request) => [request.currentKeyId, request]));
+
   const pendingNotifications = notificationStats.find((item) => item.status === "PENDING")?._count._all ?? 0;
   const failedNotifications = notificationStats.find((item) => item.status === "FAILED")?._count._all ?? 0;
   const settings = view === "settings" ? await getNotificationSettings() : null;
@@ -73,7 +90,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   }
 
   // Parrain de chaque clé : une seule requête pour toutes les clés (au lieu d'une par clé).
-  const keyUserIds = [...new Set(keys.map((key) => key.userId))];
+  const keyUserIds = [...new Set(displayKeys.map((key) => key.userId))];
   const sponsorSources = keyUserIds.length
     ? await prisma.sponsorshipRequest.findMany({
         where: { referredId: { in: keyUserIds } },
@@ -87,7 +104,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     sponsorByReferred.set(source.referredId, source.sponsor.serverNickname || source.sponsor.username);
   }
 
-  const keyRows = keys.map((key) => ({
+  const keyRows = displayKeys.map((key) => ({
     id: key.id,
     member: key.user.serverNickname || key.user.username || key.user.discordId,
     discordId: key.user.discordId,
@@ -96,6 +113,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     revokedAt: key.revokedAt,
     createdAt: key.createdAt,
     sponsor: sponsorByReferred.get(key.userId) ?? "Équipe",
+    replacementRequest: replacementByKeyId.get(key.id) ?? null,
   }));
 
   const requestRows = requests.map((request) => ({
@@ -205,12 +223,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     <th>Empreinte</th>
                     <th>Émise</th>
                     <th>Révoquée</th>
+                    <th>Remplacement</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
                   {keyRows.map((k) => (
-                    <tr key={k.id}>
+                    <tr key={k.id} id={k.replacementRequest ? `replacement-${k.replacementRequest.id}` : undefined} style={k.replacementRequest?.id === replacementRequestId ? { outline: "2px solid var(--accent)" } : undefined}>
                       <td>
                         <strong>{k.member}</strong>
                         <span className="sub">{k.discordId}</span>
@@ -227,6 +246,25 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                       <td className="mono">{k.fingerprint}</td>
                       <td className="mono faint">{k.createdAt.toLocaleDateString("fr-FR")}</td>
                       <td className="mono faint">{k.revokedAt ? k.revokedAt.toLocaleDateString("fr-FR") : "—"}</td>
+                      <td>
+                        {k.replacementRequest ? (
+                          <div className="stack" style={{ gap: "var(--s2)", minWidth: 240 }}>
+                            <div><span className={`badge ${k.replacementRequest.status === "PENDING" ? "pending" : k.replacementRequest.status === "COMPLETED" ? "ready" : "archived"}`}>{k.replacementRequest.status === "PENDING" ? "À traiter" : k.replacementRequest.status === "COMPLETED" ? "Traitée" : "Refusée"}</span><span className="sub">{k.replacementRequest.createdAt.toLocaleString("fr-FR")}</span></div>
+                            <span className="sub">{k.replacementRequest.reason}</span>
+                            {k.replacementRequest.status === "PENDING" && k.status === "ACTIVE" && (
+                              <>
+                                <form action={replaceKeyAction} className="stack" style={{ gap: "var(--s2)" }}>
+                                  <input type="hidden" name="replacementRequestId" value={k.replacementRequest.id} />
+                                  <input name="secret" type="password" required autoComplete="off" placeholder="Nouvelle clé" className="mono" />
+                                  <PendingButton pendingLabel="Remplacement…" className="btn primary sm">Remplacer la clé</PendingButton>
+                                </form>
+                                <RejectDialog requestId={k.replacementRequest.id} action={rejectKeyReplacementAction} requestIdField="replacementRequestId" commentField="decisionComment" title="Refuser le remplacement" />
+                              </>
+                            )}
+                            {k.replacementRequest.status === "REJECTED" && k.replacementRequest.decisionComment && <span className="sub">Refus : {k.replacementRequest.decisionComment}</span>}
+                          </div>
+                        ) : <span className="faint">—</span>}
+                      </td>
                       <td style={{ textAlign: "right" }}>
                         {k.status === "ACTIVE" && (
                           <form action={revoke}>

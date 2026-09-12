@@ -8,6 +8,7 @@ import { decideRequest, issueClaim, revokeKey, saveKey, submitRequest } from "@/
 import { queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
 import { getNotificationSettings, parseNotificationSettingsInput } from "@/lib/settings";
 import { decideAccessRequest, saveAccessRequestKey, submitAccessRequest } from "@/lib/access-request-workflow";
+import { rejectKeyReplacement, replaceKey, requestKeyReplacement } from "@/lib/key-replacement-workflow";
 const field = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const adminRedirect = (code: string, view = "requests") => redirect(`/admin?view=${view}&notice=${encodeURIComponent(code)}`);
 export async function createSponsorship(data: FormData) { const actor = await requireMember(); try { await submitRequest(actor, { referredIdentifier: field(data, "discordId"), relationship: field(data, "relationship"), knownSince: field(data, "knownSince"), context: field(data, "context"), comment: field(data, "comment") || undefined, attestationAccepted: field(data, "attestationAccepted") === "true" }); } catch (error) { const message = error instanceof Error ? error.message : "Impossible de créer la demande."; redirect(`/parrainer?error=${encodeURIComponent(message)}`); } revalidatePath("/parrainer"); redirect("/parrainer?success=1"); }
@@ -18,6 +19,9 @@ export async function setSponsor(data: FormData) { const actor = await requireAd
 export async function storeKey(data: FormData) { const actor = await requireAdmin(); try { await saveKey(field(data, "requestId"), field(data, "secret"), actor.discordId); } catch { adminRedirect("key_error"); } revalidatePath("/admin"); adminRedirect("key_saved"); }
 export async function revoke(data: FormData) { const actor = await requireAdmin(); try { await revokeKey(field(data, "keyId"), actor.discordId); } catch { adminRedirect("key_revoke_error", "keys"); } revalidatePath("/admin"); adminRedirect("key_revoked", "keys"); }
 export async function createClaim() { const actor = await identity(); await issueClaim(actor.discordId); revalidatePath("/mon-acces"); }
+export async function requestKeyReplacementAction(data: FormData) { const actor = await requireMember(); try { await requestKeyReplacement(actor, field(data, "reason")); } catch (error) { redirect(`/mon-acces?error=${encodeURIComponent(error instanceof Error ? error.message : "Impossible d’envoyer la demande de remplacement.")}`); } revalidatePath("/mon-acces"); redirect("/mon-acces?notice=key_replacement_requested"); }
+export async function replaceKeyAction(data: FormData) { const actor = await requireAdmin(); try { await replaceKey(field(data, "replacementRequestId"), field(data, "secret"), actor.discordId); } catch { adminRedirect("key_replacement_error", "keys"); } revalidatePath("/admin"); revalidatePath("/mon-acces"); adminRedirect("key_replaced", "keys"); }
+export async function rejectKeyReplacementAction(data: FormData) { const actor = await requireAdmin(); try { await rejectKeyReplacement(field(data, "replacementRequestId"), field(data, "decisionComment"), actor.discordId); } catch (error) { adminRedirect(error instanceof Error && error.message.includes("motif") ? "key_replacement_reason_required" : "key_replacement_error", "keys"); } revalidatePath("/admin"); revalidatePath("/mon-acces"); adminRedirect("key_replacement_rejected", "keys"); }
 
 export async function updateNotificationSettings(data: FormData) {
   const actor = await requireAdmin();

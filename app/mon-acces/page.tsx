@@ -1,3 +1,5 @@
+import { requestKeyReplacementAction } from "@/app/actions";
+import { PendingButton } from "@/app/components/pending-button";
 import { requireMember } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { CreateClaimButton } from "@/app/components/create-claim-button";
@@ -19,11 +21,13 @@ export default async function AccessPage() {
     include: {
       referredRequests: { orderBy: { createdAt: "desc" }, take: 1 },
       accessKeys: { where: { status: "ACTIVE" }, take: 1 },
+      keyReplacementRequests: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
 
   const req = user?.referredRequests[0];
   const hasActiveKey = (user?.accessKeys.length ?? 0) > 0;
+  const replacement = user?.keyReplacementRequests[0];
 
   let stage: Stage = "none";
   if (hasActiveKey || req?.status === "KEY_READY") stage = "ready";
@@ -70,6 +74,31 @@ export default async function AccessPage() {
         </div>
 
         <div className="stack">
+          {hasActiveKey && (
+            <div className="panel">
+              <div className="panel-head">
+                <h2>Remplacer ma clé</h2>
+              </div>
+              <div className="panel-body stack">
+                {replacement?.status === "PENDING" ? (
+                  <div className="banner warn" style={{ fontSize: 12.5 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v5M12 16h.01" /><circle cx="12" cy="12" r="9" /></svg>
+                    <p>Ta demande de remplacement est en cours d&apos;examen par l&apos;équipe.</p>
+                  </div>
+                ) : (
+                  <>
+                    {replacement?.status === "REJECTED" && <div className="banner danger" style={{ fontSize: 12.5 }}><div><b>Dernière demande refusée</b><p>{replacement.decisionComment || "Tu peux envoyer une nouvelle demande si nécessaire."}</p></div></div>}
+                    <p className="muted" style={{ fontSize: 13 }}>Explique pourquoi tu souhaites recevoir une nouvelle clé. L&apos;ancienne reste active tant que l&apos;équipe n&apos;a pas effectué le remplacement.</p>
+                    <form action={requestKeyReplacementAction} className="stack">
+                      <label className="field"><span>Motif du remplacement</span><textarea name="reason" required maxLength={500} placeholder="Décris brièvement le problème rencontré avec ta clé…" /><span className="hint">500 caractères maximum.</span></label>
+                      <PendingButton pendingLabel="Envoi…">Demander le remplacement</PendingButton>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="panel">
             <div className="panel-head">
               <h2>Générer mon lien</h2>

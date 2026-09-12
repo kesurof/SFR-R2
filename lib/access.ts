@@ -12,6 +12,6 @@ export async function requireAccessApprover() { const current = await identity()
 // "Get or create" : ne modifie jamais le `username` d'un compte existant
 // (la synchronisation Discord est la source de vérité pour le nom).
 export async function ensureUser(discordId: string, username: string) { return prisma.user.upsert({ where: { discordId }, update: {}, create: { discordId, username } }); }
-export async function audit(event: string, actorDiscordId?: string, targetDiscordId?: string, requestId?: string, keyId?: string, metadata: Record<string, unknown> = {}) {
-  await prisma.auditLog.create({ data: { event, actorDiscordId, targetDiscordId, requestId, keyId, metadata: JSON.stringify(metadata) } });
+export async function audit(event: string, actorDiscordId?: string, targetDiscordId?: string, requestId?: string, keyId?: string, metadata: Record<string, unknown> = {}, replacementRequestId?: string) {
+  await prisma.auditLog.create({ data: { event, actorDiscordId, targetDiscordId, requestId, keyId, replacementRequestId, metadata: JSON.stringify(metadata) } });
 }

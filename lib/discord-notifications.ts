@@ -3,7 +3,7 @@ import { audit } from "@/lib/access";
 import { getAccessRequestWebhookUrl, getNotificationSettings, isValidDiscordWebhookUrl } from "@/lib/settings";
 import { buildAccessRequestWebhookPayload, sendDiscordWebhook } from "@/lib/discord-webhook";
 
-type Input = { type: string; targetId?: string; recipientDiscordId?: string; targetKind?: "DM" | "CHANNEL" | "WEBHOOK"; requestId?: string; accessRequestId?: string; keyId?: string; dedupeKey: string; message: string };
+type Input = { type: string; targetId?: string; recipientDiscordId?: string; targetKind?: "DM" | "CHANNEL" | "WEBHOOK"; requestId?: string; accessRequestId?: string; replacementRequestId?: string; keyId?: string; dedupeKey: string; message: string };
 
 const API = "https://discord.com/api/v10";
 const MAX_ATTEMPTS = 3;
@@ -60,13 +60,14 @@ export async function queueNotification(input: Input) {
         targetKind: input.targetKind ?? "DM",
         requestId: input.requestId,
         accessRequestId: input.accessRequestId,
+        replacementRequestId: input.replacementRequestId,
         keyId: input.keyId,
         dedupeKey: input.dedupeKey,
         message: input.message,
       },
     });
 
-    await audit("DISCORD_NOTIFICATION_QUEUED", undefined, input.targetKind === "DM" ? targetId : undefined, input.requestId, input.keyId, { type: input.type, targetKind: input.targetKind ?? "DM" });
+    await audit("DISCORD_NOTIFICATION_QUEUED", undefined, input.targetKind === "DM" ? targetId : undefined, input.requestId, input.keyId, { type: input.type, targetKind: input.targetKind ?? "DM" }, input.replacementRequestId);
 
     // Tentative immédiate sans bloquer l'appelant. La réservation atomique de
     // `deliverNotification` empêche tout doublon avec le worker.
@@ -85,6 +86,7 @@ type NotificationRow = {
   requestId: string | null;
   accessRequestId: string | null;
   keyId: string | null;
+  replacementRequestId: string | null;
   message: string;
   attempts: number;
 };
@@ -105,7 +107,7 @@ async function releaseAfterFailure(row: NotificationRow, errorCode: string) {
   });
 
   if (abandoned) {
-    await audit("DISCORD_NOTIFICATION_FAILED", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, errorCode, targetKind: row.targetKind });
+    await audit("DISCORD_NOTIFICATION_FAILED", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, errorCode, targetKind: row.targetKind }, row.replacementRequestId ?? undefined);
   }
 }
 
@@ -114,7 +116,7 @@ async function abandonNotification(row: NotificationRow, errorCode: string) {
     where: { id: row.id },
     data: { status: "FAILED", attempts: { increment: 1 }, lastErrorCode: errorCode, nextAttemptAt: null },
   });
-  await audit("DISCORD_NOTIFICATION_FAILED", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, errorCode, targetKind: row.targetKind });
+  await audit("DISCORD_NOTIFICATION_FAILED", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, errorCode, targetKind: row.targetKind }, row.replacementRequestId ?? undefined);
 }
 
 function accessRequestUrl(id: string) {
@@ -192,7 +194,7 @@ async function deliverNotification(id: string) {
       where: { id },
       data: { status: "SENT", sentAt: new Date(), attempts: { increment: 1 }, lastErrorCode: null, nextAttemptAt: null },
     });
-    await audit("DISCORD_NOTIFICATION_SENT", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, targetKind: row.targetKind });
+    await audit("DISCORD_NOTIFICATION_SENT", undefined, row.targetKind === "DM" ? row.targetId : undefined, row.requestId ?? undefined, row.keyId ?? undefined, { type: row.type, targetKind: row.targetKind }, row.replacementRequestId ?? undefined);
   } catch (error) {
     if (error instanceof PermanentNotificationError) await abandonNotification(row, error.message);
     else await releaseAfterFailure(row, error instanceof Error ? error.message : "DISCORD_ERROR");
@@ -273,6 +275,9 @@ export function notificationText(type: string) {
     REQUEST_REJECTED: "Une demande de parrainage a été refusée. Consultez le portail pour plus d’informations.",
     KEY_READY: `Votre clé est disponible. Connectez-vous au portail : ${url}`,
     KEY_REVOKED: "Votre clé d’accès a été révoquée. Contactez l’équipe.",
+    KEY_REPLACED: `Votre nouvelle clé est disponible. Connectez-vous au portail : ${url}`,
+    KEY_REPLACEMENT_REJECTED: "Votre demande de remplacement de clé a été refusée. Consultez le portail pour le motif.",
+    KEY_REPLACEMENT_REQUESTED: `Une demande de remplacement de clé vous concerne. Consultez le portail : ${url}`,
     SPONSOR_GRANTED: "Le droit de parrainer vous a été accordé.",
     SPONSOR_REVOKED: "Votre droit de parrainer a été retiré.",
     ACCESS_REQUEST_WEBHOOK: "Nouvelle demande d’accès.",

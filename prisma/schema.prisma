@@ -22,6 +22,7 @@ model User {
   referredRequests  SponsorshipRequest[] @relation("Referred")
   accessRequests    AccessRequest[]
   accessKeys        AccessKey[]
+  keyReplacementRequests KeyReplacementRequest[]
 }
 
 model SyncState {
@@ -51,6 +52,7 @@ model DiscordNotification {
   requestId          String?
   accessRequestId    String?
   keyId              String?
+  replacementRequestId String?
   dedupeKey          String   @unique
   message            String   @default("")
   status             String   @default("PENDING")
@@ -63,6 +65,7 @@ model DiscordNotification {
   @@index([status, nextAttemptAt])
   @@index([requestId])
   @@index([accessRequestId])
+  @@index([replacementRequestId])
 }
 
 model SponsorPermission {
@@ -135,6 +138,7 @@ model AccessKey {
   revokedAt       DateTime?
   createdAt       DateTime     @default(now())
   claims          ClaimToken[]
+  replacementRequests KeyReplacementRequest[] @relation("ReplacementCurrentKey")
 
   @@index([userId, status])
 }
@@ -158,8 +162,29 @@ model AuditLog {
   targetDiscordId String?
   requestId       String?
   keyId           String?
+  replacementRequestId String?
   metadata        String   @default("{}")
   createdAt       DateTime @default(now())
 
   @@index([event])
+  @@index([replacementRequestId])
+}
+
+model KeyReplacementRequest {
+  id                 String   @id @default(cuid())
+  userId             String
+  currentKeyId       String
+  reason             String
+  status             String   @default("PENDING")
+  decidedByDiscordId String?
+  decidedAt          DateTime?
+  decisionComment    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentKey         AccessKey @relation("ReplacementCurrentKey", fields: [currentKeyId], references: [id])
+
+  @@index([status])
+  @@index([userId, status])
+  @@index([currentKeyId])
 }

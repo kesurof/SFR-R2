@@ -1,6 +1,6 @@
 # Architecture actuelle
 
-> Référence de l'état observé dans le dépôt au 11 septembre 2026. Ce document
+> Référence de l'état observé dans le dépôt au 12 septembre 2026. Ce document
 > décrit uniquement le comportement livré ; il ne contient ni cible, ni roadmap.
 
 ## Vue d'ensemble
@@ -37,7 +37,7 @@ est refusé. Les actions de soumission revalident cette appartenance côté serv
 au-delà de la protection des pages.
 
 Les administrateurs gèrent les droits de parrainage et d’approbation, synchronisent les membres,
-décident des demandes, enregistrent ou révoquent les clés et configurent les
+décident des demandes, enregistrent, remplacent ou révoquent les clés et configurent les
 notifications Discord. Un membre non administrateur ne peut parrainer
 qu'après obtention du droit correspondant.
 
@@ -57,9 +57,9 @@ ensuite traitée par un administrateur pour créer la clé ; elle passe alors à
 `KEY_READY`. La révocation de la clé la fait passer à `KEY_REVOKED`.
 
 La vue d’instruction réutilise les informations Discord synchronisées pour afficher
-le pseudo serveur, le nom, l’identifiant, les rôles et les anciennetés du compte et
-de l’adhésion au serveur. Ces mêmes colonnes et filtres sont partagés avec la vue
-d’administration des utilisateurs.
+le pseudo serveur, le nom et les anciennetés du compte et de l’adhésion au serveur.
+Les colonnes d’identifiant et de rôles restent disponibles dans la vue
+d’administration des utilisateurs, avec les helpers Discord partagés.
 
 ### Parrainage et clé
 
@@ -75,6 +75,18 @@ d’administration des utilisateurs.
    active et la demande passe à `KEY_READY`.
 4. La révocation d'une clé active la marque `REVOKED` et fait passer les demandes
    `KEY_READY` concernées à `KEY_REVOKED`.
+
+### Remplacement de clé
+
+Un membre possédant une clé active peut demander son remplacement depuis
+`/mon-acces`, avec un motif obligatoire de 500 caractères maximum. La demande est
+stockée dans `KeyReplacementRequest` et reste `PENDING` jusqu'à l'action d'un
+administrateur. Une seule demande en attente est autorisée par membre.
+
+La vue `/admin?view=keys` affiche la demande sur la ligne de la clé concernée. Le
+remplacement révoque l'ancienne clé et crée la nouvelle dans une transaction unique,
+puis marque la demande `COMPLETED`. Un refus conserve la clé active, marque la
+demande `REJECTED` et conserve le motif de décision.
 
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.
@@ -95,7 +107,7 @@ processus.
 ## Données et intégrations
 
 SQLite contient les utilisateurs Discord, permissions de parrainage, demandes,
-clés chiffrées, jetons de récupération, journaux d'audit, état de synchronisation,
+demandes de remplacement, clés chiffrées, jetons de récupération, journaux d'audit, état de synchronisation,
 paramètres globaux et notifications Discord. Prisma est la couche d'accès aux
 données et ses migrations versionnées sont la source de vérité du schéma.
 
@@ -117,7 +129,10 @@ Les nouvelles demandes d’accès alertent le webhook Discord configuré dans le
 paramètres globaux de l’application avec un embed contenant le pseudo, la date et
 un lien direct vers la demande, sans exposer ses réponses. Le demandeur est notifié
 par DM à la soumission et à la décision ; les administrateurs reçoivent un DM
-lorsqu’une demande acceptée attend une clé.
+lorsqu’une demande acceptée attend une clé ou lorsqu’un membre demande le
+remplacement de sa clé. Le DM de remplacement contient le motif, l’empreinte de la
+clé actuelle et un lien direct vers la ligne de la vue des clés, sans jamais exposer
+la clé en clair. Le demandeur est informé par DM après un remplacement ou un refus.
 
 L’URL du webhook est chiffrée avec `ENCRYPTION_KEY` et n’est jamais renvoyée à
 l’interface d’administration ni aux journaux. Sa configuration et sa suppression

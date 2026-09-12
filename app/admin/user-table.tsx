@@ -20,13 +20,10 @@ type User = DiscordUserTableRow & {
 
 const DEFAULT_FILTERS = { global: "", role: "", sponsor: "", approval: "" };
 
-function statusOptions() {
-  return [
-    { value: "", label: "Tous" },
-    { value: "yes", label: "Autorisé" },
-    { value: "no", label: "Non autorisé" },
-  ];
-}
+const PERMISSION_OPTIONS = [
+  { value: "yes", label: "Autorisé" },
+  { value: "no", label: "Non autorisé" },
+];
 
 export function UserTable({ users }: { users: User[] }) {
   const [f, setF] = usePersistentState("sfr:admin:users-filters-v2", DEFAULT_FILTERS);
@@ -120,17 +117,21 @@ export function UserTable({ users }: { users: User[] }) {
         />
         <Select
           aria-label="Filtrer par parrainage"
-          value={f.sponsor}
-          onChange={(value) => patch({ sponsor: value })}
+          placeholder="Parrainage"
+          allowClear
+          value={f.sponsor || undefined}
+          onChange={(value) => patch({ sponsor: value ?? "" })}
           style={{ width: 170 }}
-          options={statusOptions()}
+          options={PERMISSION_OPTIONS}
         />
         <Select
           aria-label="Filtrer par approbation"
-          value={f.approval}
-          onChange={(value) => patch({ approval: value })}
+          placeholder="Approbation"
+          allowClear
+          value={f.approval || undefined}
+          onChange={(value) => patch({ approval: value ?? "" })}
           style={{ width: 190 }}
-          options={statusOptions()}
+          options={PERMISSION_OPTIONS}
         />
         <Button onClick={() => setF({ ...DEFAULT_FILTERS })}>Réinitialiser les filtres</Button>
         <Typography.Text type="secondary">

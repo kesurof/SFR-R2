@@ -1,4 +1,4 @@
-import { Alert, Card, Input, Space } from "antd";
+import { Card, Input, Space } from "antd";
 import Title from "antd/es/typography/Title";
 import Text from "antd/es/typography/Text";
 import Paragraph from "antd/es/typography/Paragraph";
@@ -43,35 +43,56 @@ export default async function AccessRequestPage() {
       ) : (
         <Card>
           <form action={createAccessRequest}>
-            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-              {latest?.status === "REJECTED" && (
-                <Alert
-                  type="error"
-                  showIcon
-                  message="Dernière demande refusée"
-                  description={latest.decisionComment || "Vous pouvez déposer une nouvelle demande si votre situation a changé."}
-                />
-              )}
+            {latest?.status === "REJECTED" && (
+              <Paragraph type="secondary" style={{ marginBottom: 16, fontSize: 13 }}>
+                {`Dernière demande refusée${
+                  latest.decisionComment ? ` : ${latest.decisionComment}` : ". Vous pouvez déposer une nouvelle demande si votre situation a changé."
+                }`}
+              </Paragraph>
+            )}
 
-              <FormField label="Serveurs Discord et trackers" hint="600 caractères maximum.">
-                <TextArea name="communitiesAndTrackers" required maxLength={600} rows={3} placeholder="Les communautés ou trackers que vous fréquentez." />
-              </FormField>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <FormField label="Serveurs Discord et trackers" hint="600 caractères maximum.">
+                  <TextArea
+                    name="communitiesAndTrackers"
+                    required
+                    maxLength={600}
+                    autoSize={{ minRows: 2, maxRows: 5 }}
+                    placeholder="Les communautés ou trackers que vous fréquentez."
+                  />
+                </FormField>
+              </div>
               <FormField label="Vos motivations" hint="1 000 caractères maximum.">
-                <TextArea name="motivations" required maxLength={1000} rows={4} placeholder="Pourquoi souhaitez-vous accéder au service ?" />
+                <TextArea
+                  name="motivations"
+                  required
+                  maxLength={1000}
+                  autoSize={{ minRows: 2, maxRows: 5 }}
+                  placeholder="Pourquoi souhaitez-vous accéder au service ?"
+                />
               </FormField>
               <FormField label="Votre parcours self-hosting" hint="1 000 caractères maximum.">
-                <TextArea name="selfHostingExperience" required maxLength={1000} rows={4} placeholder="Vos usages, projets ou expérience d’auto-hébergement." />
+                <TextArea
+                  name="selfHostingExperience"
+                  required
+                  maxLength={1000}
+                  autoSize={{ minRows: 2, maxRows: 5 }}
+                  placeholder="Vos usages, projets ou expérience d’auto-hébergement."
+                />
               </FormField>
-              <FormField
-                label={
-                  <>
-                    Comment avez-vous connu le service <Text type="secondary">· facultatif</Text>
-                  </>
-                }
-              >
-                <Input name="discoverySource" maxLength={300} placeholder="Une personne, une communauté…" />
-              </FormField>
-            </Space>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <FormField
+                  label={
+                    <>
+                      Comment avez-vous connu le service <Text type="secondary">· facultatif</Text>
+                    </>
+                  }
+                >
+                  <Input name="discoverySource" maxLength={300} placeholder="Une personne, une communauté…" />
+                </FormField>
+              </div>
+            </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
               <Text type="secondary">Votre identité Discord est associée automatiquement.</Text>

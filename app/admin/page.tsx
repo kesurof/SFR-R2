@@ -236,7 +236,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </Text>
           }
         >
-          <KeysTable rows={keyRows} focusedReplacementId={replacementRequestId} />
+          <KeysTable rows={keyRows} />
         </Card>
       )}
 
@@ -249,59 +249,72 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             Réglages des notifications envoyées par le portail.
           </Paragraph>
           <form action={updateNotificationSettings}>
-            <Space direction="vertical" size="middle" style={{ width: "100%", maxWidth: 720 }}>
-              <Checkbox name="discordNotificationsEnabled" value="true" defaultChecked={settings.discordNotificationsEnabled}>
-                <strong>Notifications privées activées</strong>
-                <Text type="secondary" style={{ display: "block" }}>
-                  Les changements s’appliquent sans redémarrer le conteneur.
-                </Text>
-              </Checkbox>
-              <FormField label="Intervalle de traitement" hint="Entre 10 et 3 600 secondes. Les notifications sont traitées en arrière-plan ; aucune clé ni aucun token n’est transmis.">
-                <Space>
-                  <Input
-                    id="notificationWorkerIntervalSeconds"
-                    name="notificationWorkerIntervalSeconds"
-                    type="number"
-                    min={10}
-                    max={3600}
-                    step={1}
-                    defaultValue={settings.notificationWorkerIntervalSeconds}
-                    required
-                    style={{ width: 120 }}
-                  />
-                  <Text type="secondary">secondes</Text>
+            <Row gutter={[24, 16]}>
+              <Col xs={24} lg={12}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Checkbox name="discordNotificationsEnabled" value="true" defaultChecked={settings.discordNotificationsEnabled}>
+                    <strong>Notifications privées activées</strong>
+                    <Text type="secondary" style={{ display: "block" }}>
+                      Les changements s’appliquent sans redémarrer le conteneur.
+                    </Text>
+                  </Checkbox>
+                  <FormField
+                    label="Intervalle de traitement"
+                    hint="Entre 10 et 3 600 secondes. Les notifications sont traitées en arrière-plan ; aucune clé ni aucun token n’est transmis."
+                  >
+                    <Space>
+                      <Input
+                        id="notificationWorkerIntervalSeconds"
+                        name="notificationWorkerIntervalSeconds"
+                        type="number"
+                        min={10}
+                        max={3600}
+                        step={1}
+                        defaultValue={settings.notificationWorkerIntervalSeconds}
+                        required
+                        style={{ width: 120 }}
+                      />
+                      <Text type="secondary">secondes</Text>
+                    </Space>
+                  </FormField>
                 </Space>
-              </FormField>
-              <FormField
-                label="Webhook Discord des nouvelles demandes"
-                hint="L’URL est chiffrée et masquée. Elle sert uniquement à publier un embed lors d’une nouvelle demande d’accès. Laissez vide pour conserver le webhook actuel."
-              >
-                <Space wrap>
-                  <Password
-                    id="accessRequestWebhookUrl"
-                    name="accessRequestWebhookUrl"
-                    autoComplete="new-password"
-                    placeholder={settings.accessRequestWebhookConfigured ? "Webhook configuré — laisser vide pour le conserver" : "https://discord.com/api/webhooks/…"}
-                    style={{ width: 380 }}
-                  />
-                  {settings.accessRequestWebhookConfigured && <Tag color="green">Configuré</Tag>}
-                </Space>
-              </FormField>
-              <Alert
-                type="info"
-                showIcon
-                message="À savoir"
-                description="Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation."
-              />
-              <Space wrap>
-                <Button type="primary" htmlType="submit">
-                  Enregistrer
-                </Button>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Dernière modification : {settings.updatedAt.toLocaleString("fr-FR")} {settings.updatedByDiscordId ? `par ${settings.updatedByDiscordId}` : "(initialisation)"}
-                </Text>
-              </Space>
-            </Space>
+              </Col>
+              <Col xs={24} lg={12}>
+                <FormField
+                  label="Webhook Discord des nouvelles demandes"
+                  hint="L’URL est chiffrée et masquée. Elle sert uniquement à publier un embed lors d’une nouvelle demande d’accès. Laissez vide pour conserver le webhook actuel."
+                >
+                  <Space wrap style={{ width: "100%" }}>
+                    <Password
+                      id="accessRequestWebhookUrl"
+                      name="accessRequestWebhookUrl"
+                      autoComplete="new-password"
+                      placeholder={settings.accessRequestWebhookConfigured ? "Webhook configuré — laisser vide pour le conserver" : "https://discord.com/api/webhooks/…"}
+                      style={{ width: "100%", maxWidth: 420 }}
+                    />
+                    {settings.accessRequestWebhookConfigured && <Tag color="green">Configuré</Tag>}
+                  </Space>
+                </FormField>
+              </Col>
+              <Col span={24}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="À savoir"
+                  description="Les messages en attente sont conservés si les notifications sont désactivées, puis repris lors de la réactivation."
+                />
+              </Col>
+              <Col span={24}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Dernière modification : {settings.updatedAt.toLocaleString("fr-FR")} {settings.updatedByDiscordId ? `par ${settings.updatedByDiscordId}` : "(initialisation)"}
+                  </Text>
+                  <Button type="primary" htmlType="submit">
+                    Enregistrer
+                  </Button>
+                </div>
+              </Col>
+            </Row>
           </form>
           {settings.accessRequestWebhookConfigured && (
             <form action={clearAccessRequestWebhook} style={{ marginTop: 16 }}>

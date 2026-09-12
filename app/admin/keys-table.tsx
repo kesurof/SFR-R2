@@ -24,7 +24,7 @@ export type KeyRow = {
   } | null;
 };
 
-export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focusedReplacementId?: string }) {
+export function KeysTable({ rows }: { rows: KeyRow[] }) {
   const columns: TableColumnsType<KeyRow> = [
     {
       title: "Membre",
@@ -41,7 +41,7 @@ export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focu
     {
       title: "Parrainé par",
       key: "sponsor",
-      render: (_, row) => <Tag color={row.sponsor === "Équipe" ? "default" : "blue"}>{row.sponsor}</Tag>,
+      render: (_, row) => <Typography.Text>{row.sponsor}</Typography.Text>,
     },
     { title: "Empreinte", dataIndex: "fingerprint", key: "fingerprint", render: (value: string) => <Typography.Text code>{value}</Typography.Text> },
     { title: "Émise", dataIndex: "createdAt", key: "createdAt", render: (value: string) => new Date(value).toLocaleDateString("fr-FR") },
@@ -52,12 +52,11 @@ export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focu
       render: (_, row) => {
         const replacement = row.replacementRequest;
         if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
-        const color = replacement.status === "PENDING" ? "gold" : replacement.status === "COMPLETED" ? "green" : "default";
         const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
         return (
           <Space direction="vertical" size={4} style={{ minWidth: 240 }}>
             <Space size={4}>
-              <Tag color={color}>{label}</Tag>
+              <Tag>{label}</Tag>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {new Date(replacement.createdAt).toLocaleString("fr-FR")}
               </Typography.Text>
@@ -118,11 +117,6 @@ export function KeysTable({ rows, focusedReplacementId }: { rows: KeyRow[]; focu
       pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
       scroll={{ x: "max-content" }}
       locale={{ emptyText: "Aucune clé enregistrée." }}
-      onRow={(row) =>
-        row.replacementRequest?.id === focusedReplacementId
-          ? { style: { outline: "2px solid var(--ant-color-primary)", outlineOffset: -2 } }
-          : {}
-      }
     />
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCESS_REQUEST_LIMITS, accessRequestStatus, accessRequestDecisionError, accessRequestInputError } from "../lib/access-request-rules";
+import { ACCESS_REQUEST_LIMITS, accessRequestStatus, accessRequestDecisionError, accessRequestInputError, compareAccessRequestStatuses } from "../lib/access-request-rules";
 
 const valid = { communitiesAndTrackers: "Discord A, tracker B", motivations: "Participer au projet.", selfHostingExperience: "Serveur personnel." };
 
@@ -13,5 +13,11 @@ describe("demande d’accès", () => {
     expect(accessRequestStatus("PENDING")).toBe("PENDING");
     expect(accessRequestStatus("ARCHIVED")).toBeUndefined();
     expect(accessRequestStatus("invalide")).toBeUndefined();
+  });
+  it("trie les statuts dans l’ordre du workflow et place les inconnus en dernier", () => {
+    expect(compareAccessRequestStatuses("PENDING", "KEY_READY", "asc")).toBeLessThan(0);
+    expect(compareAccessRequestStatuses("PENDING", "KEY_READY", "desc")).toBeGreaterThan(0);
+    expect(compareAccessRequestStatuses("UNKNOWN", "PENDING", "asc")).toBeGreaterThan(0);
+    expect(compareAccessRequestStatuses("UNKNOWN", "PENDING", "desc")).toBeGreaterThan(0);
   });
 });

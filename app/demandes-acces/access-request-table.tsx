@@ -3,12 +3,14 @@
 import { useEffect, useMemo } from "react";
 import { decideAccessRequestAction, storeAccessRequestKey } from "@/app/actions";
 import { RejectDialog } from "@/app/admin/reject-dialog";
-import { DiscordUserColumns } from "@/app/components/discord-user-columns";
+import { DiscordUserColumns, SortHeader } from "@/app/components/discord-user-columns";
 import { StatusBadge } from "@/app/components/status-badge";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import { AccessRequestDetails } from "@/app/demandes-acces/access-request-details";
 import { compareDiscordUsers, DEFAULT_DISCORD_USER_FILTERS, matchesDiscordUserFilters, type DiscordUserColumnFilters, type DiscordUserSortKey, type DiscordUserTableRow, type SortDirection } from "@/lib/discord-user-columns";
-import type { AccessRequestStatus } from "@/lib/access-request-rules";
+import { compareAccessRequestStatuses, type AccessRequestStatus } from "@/lib/access-request-rules";
+
+const ACCESS_REQUEST_DISCORD_COLUMNS = ["nickname", "username", "server", "account"] as const;
 
 type Row = {
   id: string;
@@ -31,8 +33,8 @@ type FilterState = {
   status: "ALL" | AccessRequestStatus;
   sort: "newest" | "oldest";
   discord: DiscordUserColumnFilters;
-  userSortKey: DiscordUserSortKey | null;
-  userSortDir: SortDirection;
+  sortKey: DiscordUserSortKey | "status" | null;
+  sortDir: SortDirection;
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -40,8 +42,8 @@ const DEFAULT_FILTERS: FilterState = {
   status: "ALL",
   sort: "newest",
   discord: DEFAULT_DISCORD_USER_FILTERS,
-  userSortKey: null,
-  userSortDir: "asc",
+  sortKey: null,
+  sortDir: "asc",
 };
 
 export function AccessRequestTable({
@@ -57,7 +59,7 @@ export function AccessRequestTable({
   focusedRequestStatus?: AccessRequestStatus;
   initialStatus?: AccessRequestStatus;
 }) {
-  const [filters, setFilters] = usePersistentState("sfr:access-requests-filters-v2", DEFAULT_FILTERS);
+  const [filters, setFilters] = usePersistentState("sfr:access-requests-filters-v3", DEFAULT_FILTERS);
   const patch = (next: Partial<FilterState>) => setFilters((previous) => ({ ...previous, ...next }));
   const discordRows = useMemo(() => requests.map((request) => request.discordUser), [requests]);
 
@@ -78,8 +80,10 @@ export function AccessRequestTable({
       return true;
     });
 
-    if (filters.userSortKey) {
-      filtered.sort((a, b) => compareDiscordUsers(a.discordUser, b.discordUser, filters.userSortKey!, filters.userSortDir));
+    if (filters.sortKey === "status") {
+      filtered.sort((a, b) => compareAccessRequestStatuses(a.status, b.status, filters.sortDir));
+    } else if (filters.sortKey) {
+      filtered.sort((a, b) => compareDiscordUsers(a.discordUser, b.discordUser, filters.sortKey as DiscordUserSortKey, filters.sortDir));
     } else {
       filtered.sort((a, b) => filters.sort === "oldest" ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt));
     }
@@ -90,15 +94,7 @@ export function AccessRequestTable({
     <>
       <div className="toolbar">
         <input type="search" aria-label="Rechercher une demande d’accès" placeholder="Rechercher un demandeur ou un approbateur…" value={filters.query} onChange={(event) => patch({ query: event.target.value })} />
-        <select aria-label="Filtrer par statut" value={filters.status} onChange={(event) => patch({ status: event.target.value as FilterState["status"] })}>
-          <option value="ALL">Tous les statuts</option>
-          <option value="PENDING">En attente</option>
-          <option value="APPROVED">Acceptées</option>
-          <option value="KEY_READY">Clé prête</option>
-          <option value="REJECTED">Refusées</option>
-          <option value="KEY_REVOKED">Clé révoquée</option>
-        </select>
-        <select aria-label="Trier par date de demande" value={filters.sort} onChange={(event) => patch({ sort: event.target.value as FilterState["sort"], userSortKey: null })}>
+        <select aria-label="Trier par date de demande" value={filters.sort} onChange={(event) => patch({ sort: event.target.value as FilterState["sort"], sortKey: null })}>
           <option value="newest">Plus récentes</option>
           <option value="oldest">Plus anciennes</option>
         </select>
@@ -110,20 +106,30 @@ export function AccessRequestTable({
         <table>
           <thead>
             <tr>
-              <th>Statut</th>
+              <th><SortHeader label="Statut" active={filters.sortKey === "status"} direction={filters.sortDir} onClick={() => patch({ sortKey: "status", sortDir: filters.sortKey === "status" && filters.sortDir === "asc" ? "desc" : "asc" })} /></th>
               <DiscordUserColumns
                 kind="header"
-                sortKey={filters.userSortKey}
-                sortDir={filters.userSortDir}
-                onSort={(key) => patch({ userSortKey: key, userSortDir: filters.userSortKey === key && filters.userSortDir === "asc" ? "desc" : "asc" })}
+                visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS}
+                sortKey={filters.sortKey === "server" || filters.sortKey === "account" ? filters.sortKey : null}
+                sortDir={filters.sortDir}
+                onSort={(key) => patch({ sortKey: key, sortDir: filters.sortKey === key && filters.sortDir === "asc" ? "desc" : "asc" })}
               />
               <th>Soumise</th>
               <th>Décision</th>
               <th>Actions</th>
             </tr>
             <tr className="col-filter">
-              <th />
-              <DiscordUserColumns kind="filters" rows={discordRows} filters={filters.discord} onChange={(next) => patch({ discord: { ...filters.discord, ...next } })} />
+              <th>
+                <select aria-label="Filtrer par statut" value={filters.status} onChange={(event) => patch({ status: event.target.value as FilterState["status"] })}>
+                  <option value="ALL">Tous les statuts</option>
+                  <option value="PENDING">En attente</option>
+                  <option value="APPROVED">Acceptées</option>
+                  <option value="KEY_READY">Clé prête</option>
+                  <option value="REJECTED">Refusées</option>
+                  <option value="KEY_REVOKED">Clé révoquée</option>
+                </select>
+              </th>
+              <DiscordUserColumns kind="filters" visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS} rows={discordRows} filters={filters.discord} onChange={(next) => patch({ discord: { ...filters.discord, ...next } })} />
               <th />
               <th />
               <th />
@@ -133,7 +139,7 @@ export function AccessRequestTable({
             {rows.map((row) => (
               <tr key={row.id} style={row.id === focusedRequestId ? { outline: "2px solid var(--accent)" } : undefined}>
                 <td><StatusBadge status={row.status} /></td>
-                <DiscordUserColumns kind="cells" user={row.discordUser} />
+                <DiscordUserColumns kind="cells" visibleColumns={ACCESS_REQUEST_DISCORD_COLUMNS} user={row.discordUser} />
                 <td className="mono faint">{new Date(row.createdAt).toLocaleDateString("fr-FR")}</td>
                 <td>{row.decidedAt ? <><strong>{row.approverName || "Inconnu"}</strong><span className="sub">{new Date(row.decidedAt).toLocaleDateString("fr-FR")}</span><span className="sub">{row.decisionComment || "Sans commentaire"}</span></> : <span className="faint">—</span>}</td>
                 <td>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { setAccessApprover, setSponsor } from "@/app/actions";
-import { DiscordUserColumns } from "@/app/components/discord-user-columns";
+import { DiscordUserColumns, SortHeader } from "@/app/components/discord-user-columns";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import { collectDiscordRoles, compareDiscordUsers, DEFAULT_DISCORD_USER_FILTERS, matchesDiscordUserFilters, parseDiscordRoles, type DiscordUserColumnFilters, type DiscordUserSortKey, type DiscordUserTableRow, type SortDirection } from "@/lib/discord-user-columns";
 
@@ -76,21 +76,6 @@ export function UserTable({ users }: { users: User[] }) {
   const current = Math.min(f.page, pages);
   const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  function sortApprovalHeader() {
-    const active = f.sortKey === "approval";
-    return (
-      <button
-        type="button"
-        className="th-sort"
-        aria-label="Trier par approbation"
-        onClick={() => patch(active ? { sortDir: f.sortDir === "asc" ? "desc" : "asc" } : { sortKey: "approval", sortDir: "asc", page: 1 })}
-      >
-        Approbation
-        <span className="th-arrow">{active ? (f.sortDir === "asc" ? "▲" : "▼") : "↕"}</span>
-      </button>
-    );
-  }
-
   return (
     <>
       <div className="toolbar">
@@ -109,7 +94,7 @@ export function UserTable({ users }: { users: User[] }) {
                 onSort={(key) => patch({ sortKey: key, sortDir: f.sortKey === key && f.sortDir === "asc" ? "desc" : "asc", page: 1 })}
               />
               <th>Parrainage</th>
-              <th>{sortApprovalHeader()}</th>
+              <th><SortHeader label="Approbation" active={f.sortKey === "approval"} direction={f.sortDir} onClick={() => patch(f.sortKey === "approval" ? { sortDir: f.sortDir === "asc" ? "desc" : "asc" } : { sortKey: "approval", sortDir: "asc", page: 1 })} /></th>
             </tr>
             <tr className="col-filter">
               <DiscordUserColumns kind="filters" rows={users} filters={discordFilters} onChange={(next) => patch({ discord: { ...discordFilters, ...next }, page: 1 })} />

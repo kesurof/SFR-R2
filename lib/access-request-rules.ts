@@ -2,6 +2,15 @@ export const ACCESS_REQUEST_LIMITS = { communitiesAndTrackers: 600, motivations:
 export const ACCESS_REQUEST_STATUSES = ["PENDING", "APPROVED", "KEY_READY", "REJECTED", "KEY_REVOKED"] as const;
 export type AccessRequestStatus = (typeof ACCESS_REQUEST_STATUSES)[number];
 
+export function compareAccessRequestStatuses(a: string, b: string, direction: "asc" | "desc"): number {
+  const left = ACCESS_REQUEST_STATUSES.indexOf(a as AccessRequestStatus);
+  const right = ACCESS_REQUEST_STATUSES.indexOf(b as AccessRequestStatus);
+  if (left === -1 && right === -1) return 0;
+  if (left === -1) return 1;
+  if (right === -1) return -1;
+  return (left - right) * (direction === "asc" ? 1 : -1);
+}
+
 export function accessRequestStatus(value: unknown): AccessRequestStatus | undefined {
   return typeof value === "string" && (ACCESS_REQUEST_STATUSES as readonly string[]).includes(value)
     ? value as AccessRequestStatus

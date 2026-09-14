@@ -89,8 +89,10 @@ administrateur. Une seule demande en attente est autorisée par membre.
 
 La vue `/admin?view=keys` affiche la demande sur la ligne de la clé concernée. Le
 remplacement révoque l'ancienne clé et crée la nouvelle dans une transaction unique,
-puis marque la demande `COMPLETED`. Un refus conserve la clé active, marque la
-demande `REJECTED` et conserve le motif de décision.
+puis marque la demande `COMPLETED` et l'associe à la nouvelle clé (`newKeyId`). La
+demande est alors visible sur la ligne de la nouvelle clé active, avec l'empreinte
+de la clé remplacée. Un refus conserve la clé active, marque la demande `REJECTED`
+et conserve le motif de décision sur la ligne de la clé ciblée.
 
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.

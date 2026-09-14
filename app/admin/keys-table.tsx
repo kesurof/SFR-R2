@@ -21,6 +21,8 @@ export type KeyRow = {
     createdAt: string;
     reason: string;
     decisionComment: string | null;
+    previousFingerprint: string;
+    isResult: boolean;
   } | null;
 };
 
@@ -53,18 +55,24 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
         const replacement = row.replacementRequest;
         if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
         const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
+        const color = replacement.status === "COMPLETED" ? "green" : replacement.status === "REJECTED" ? "red" : undefined;
         return (
-          <Space direction="vertical" size={4} style={{ minWidth: 240 }}>
+          <Space direction="vertical" size={4} style={{ minWidth: 240 }} id={`replacement-${replacement.id}`}>
             <Space size={4}>
-              <Tag>{label}</Tag>
+              <Tag color={color}>{label}</Tag>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {new Date(replacement.createdAt).toLocaleString("fr-FR")}
               </Typography.Text>
             </Space>
+            {replacement.isResult && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Remplace la clé {replacement.previousFingerprint}
+              </Typography.Text>
+            )}
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               {replacement.reason}
             </Typography.Text>
-            {replacement.status === "PENDING" && row.status === "ACTIVE" && (
+            {replacement.status === "PENDING" && !replacement.isResult && row.status === "ACTIVE" && (
               <>
                 <form action={replaceKeyAction} style={{ display: "flex", gap: 4 }}>
                   <input type="hidden" name="replacementRequestId" value={replacement.id} />

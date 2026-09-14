@@ -139,6 +139,7 @@ model AccessKey {
   createdAt       DateTime     @default(now())
   claims          ClaimToken[]
   replacementRequests KeyReplacementRequest[] @relation("ReplacementCurrentKey")
+  resultingReplacement KeyReplacementRequest? @relation("ReplacementNewKey")
 
   @@index([userId, status])
 }
@@ -174,6 +175,7 @@ model KeyReplacementRequest {
   id                 String   @id @default(cuid())
   userId             String
   currentKeyId       String
+  newKeyId           String?  @unique
   reason             String
   status             String   @default("PENDING")
   decidedByDiscordId String?
@@ -183,6 +185,7 @@ model KeyReplacementRequest {
   updatedAt          DateTime @updatedAt
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentKey         AccessKey @relation("ReplacementCurrentKey", fields: [currentKeyId], references: [id])
+  newKey             AccessKey? @relation("ReplacementNewKey", fields: [newKeyId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([userId, status])

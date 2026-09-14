@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/access";
 import { hash } from "@/lib/crypto";
 import { createAccessKey } from "@/lib/access-key";
+import { accessKeyFingerprint } from "@/lib/access-key-rules";
 import { queueNotification } from "@/lib/discord-notifications";
 import { buildKeyReplacementAdminMessage, keyReplacementAdminUrl } from "@/lib/key-replacement-notifications";
 import { keyReplacementDecisionError, keyReplacementInputError } from "@/lib/key-replacement-rules";
@@ -45,7 +46,7 @@ export async function requestKeyReplacement(actor: { discordId: string }, reason
     discordId: user.discordId,
     reason: request.reason,
     createdAt: request.createdAt,
-    fingerprint: `${currentKey.prefix}••••••••${currentKey.suffix}`,
+    fingerprint: accessKeyFingerprint(currentKey.prefix, currentKey.suffix),
     adminUrl: keyReplacementAdminUrl(portal(), request.id),
   });
 
@@ -75,7 +76,7 @@ export async function replaceKey(requestId: string, secret: string, actorDiscord
     if (revoked.count !== 1) throw new Error("La clé ciblée n’est plus active.");
 
     const created = await createAccessKey(tx, request.userId, trimmed);
-    await tx.keyReplacementRequest.update({ where: { id: requestId }, data: { status: "COMPLETED", decidedByDiscordId: actorDiscordId, decidedAt: new Date() } });
+    await tx.keyReplacementRequest.update({ where: { id: requestId }, data: { status: "COMPLETED", newKeyId: created.id, decidedByDiscordId: actorDiscordId, decidedAt: new Date() } });
     await tx.auditLog.create({
       data: {
         event: "ACCESS_KEY_REPLACED",

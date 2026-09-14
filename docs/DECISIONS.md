@@ -16,6 +16,7 @@ dans le code : leur contexte et leurs alternatives ne sont pas attestés ici.
 | [0005](adr/0005-systeme-de-composants-ant-design.md) | Accepté | L'interface adopte Ant Design 6 comme système de composants et de thème, sans Pro Components. |
 | [0006](adr/0006-actions-typees-next-safe-action.md) | Accepté | Les actions serveur deviennent typées via next-safe-action et Zod, en conservant la validation métier existante. |
 | [0007](adr/0007-restauration-par-recherche-de-membre.md) | Accepté | La restauration d'accès se fait dans un onglet dédié, par recherche d'un membre présent sur le serveur, sans saisie du Discord ID. |
+| [0008](adr/0008-tracabilite-remplacement-nouvelle-cle.md) | Accepté | Un remplacement abouti est rattaché à la nouvelle clé (`newKeyId`) et affiché sur sa ligne dans la vue des clés. |
 
 Les ADR futures sont créées sous `docs/adr/NNNN-titre-court.md`, avec une
 numérotation séquentielle à quatre chiffres. `DECISIONS.md` est l'index de ces ADR,

@@ -12,6 +12,8 @@ import { RestoreAccessForm } from "@/app/admin/restore-access-form";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
 import { FormField } from "@/app/components/form-field";
 import { identity, isAdmin } from "@/lib/access";
+import { accessKeyFingerprint } from "@/lib/access-key-rules";
+import { buildKeyReplacementViews } from "@/lib/key-replacement-rules";
 import { prisma } from "@/lib/prisma";
 import { getNotificationSettings } from "@/lib/settings";
 
@@ -53,20 +55,31 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const view: View = VIEWS.some((v) => v.id === query.view) ? (query.view as View) : "requests";
   const replacementRequestId = query.replacementRequest;
 
+  const keys = await prisma.accessKey.findMany({ include: { user: true }, orderBy: { createdAt: "desc" }, take: KEYS_LIMIT });
+  const keyIds = keys.map((key) => key.id);
+
+  // Toutes les demandes en attente (file de travail), les demandes liées aux clés
+  // affichées (en attente, refusées ou abouties) et la demande ciblée par un lien direct.
   const replacementRequests = await prisma.keyReplacementRequest.findMany({
-    where: replacementRequestId ? { OR: [{ status: "PENDING" }, { id: replacementRequestId }] } : { status: "PENDING" },
+    where: {
+      OR: [
+        { status: "PENDING" },
+        { currentKeyId: { in: keyIds } },
+        { newKeyId: { in: keyIds } },
+        ...(replacementRequestId ? [{ id: replacementRequestId }] : []),
+      ],
+    },
     include: { user: true, currentKey: true },
     orderBy: { createdAt: "desc" },
     take: KEYS_LIMIT,
   });
 
-  const [requests, keys, memberCount, pending, activeKeyCount, requestTotal, keyTotal, notificationStats] = await Promise.all([
+  const [requests, memberCount, pending, activeKeyCount, requestTotal, keyTotal, notificationStats] = await Promise.all([
     prisma.sponsorshipRequest.findMany({
       include: { sponsor: true, referred: true },
       orderBy: { createdAt: "desc" },
       take: REQUESTS_LIMIT,
     }),
-    prisma.accessKey.findMany({ include: { user: true }, orderBy: { createdAt: "desc" }, take: KEYS_LIMIT }),
     prisma.user.count(),
     prisma.sponsorshipRequest.count({ where: { status: "PENDING" } }),
     prisma.accessKey.count({ where: { status: "ACTIVE" } }),
@@ -75,12 +88,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     prisma.discordNotification.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
 
-  const replacementKeyIds = replacementRequests.map((request) => request.currentKeyId);
+  const replacementKeyIds = replacementRequests.flatMap((request) => (request.newKeyId ? [request.currentKeyId, request.newKeyId] : [request.currentKeyId]));
   const extraKeys = replacementKeyIds.length
     ? await prisma.accessKey.findMany({ where: { id: { in: replacementKeyIds } }, include: { user: true } })
     : [];
   const displayKeys = [...keys, ...extraKeys.filter((key) => !keys.some((loaded) => loaded.id === key.id))];
-  const replacementByKeyId = new Map(replacementRequests.map((request) => [request.currentKeyId, request]));
+  const replacementByKeyId = buildKeyReplacementViews(replacementRequests);
 
   const pendingNotifications = notificationStats.find((item) => item.status === "PENDING")?._count._all ?? 0;
   const failedNotifications = notificationStats.find((item) => item.status === "FAILED")?._count._all ?? 0;
@@ -125,7 +138,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       id: key.id,
       member: key.user.serverNickname || key.user.username || key.user.discordId,
       discordId: key.user.discordId,
-      fingerprint: `${key.prefix}••••••••${key.suffix}`,
+      fingerprint: accessKeyFingerprint(key.prefix, key.suffix),
       status: key.status,
       revokedAt: key.revokedAt?.toISOString() ?? null,
       createdAt: key.createdAt.toISOString(),
@@ -137,6 +150,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             createdAt: replacement.createdAt.toISOString(),
             reason: replacement.reason,
             decisionComment: replacement.decisionComment,
+            previousFingerprint: replacement.previousFingerprint,
+            isResult: replacement.isResult,
           }
         : null,
     };

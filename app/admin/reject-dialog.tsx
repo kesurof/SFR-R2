@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button, Input, Modal } from "antd";
 import { decide } from "@/app/actions";
 
@@ -11,19 +11,36 @@ export function RejectDialog({
   commentField = "rejectionReason",
   requestIdField = "requestId",
   title = "Refuser la demande",
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+  triggerLabel = "Refuser",
+  triggerIcon,
 }: {
   requestId: string;
   action?: RejectAction;
   commentField?: string;
   requestIdField?: string;
   title?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  triggerLabel?: string;
+  triggerIcon?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (value: boolean) => {
+    setUncontrolledOpen(value);
+    onOpenChange?.(value);
+  };
   return (
     <>
-      <Button danger size="small" onClick={() => setOpen(true)}>
-        Refuser
-      </Button>
+      {!hideTrigger && (
+        <Button danger size="small" icon={triggerIcon} onClick={() => setOpen(true)}>
+          {triggerLabel}
+        </Button>
+      )}
       <Modal title={title} open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden>
         <form
           action={action}

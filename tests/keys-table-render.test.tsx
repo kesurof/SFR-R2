@@ -25,7 +25,7 @@ const baseRow: KeyRow = {
 };
 
 describe("KeysTable", () => {
-  it("trace un remplacement abouti sur la nouvelle clé", () => {
+  it("trace un remplacement abouti et propose l'action principale", () => {
     render(
       <KeysTable
         rows={[
@@ -48,11 +48,10 @@ describe("KeysTable", () => {
     expect(screen.getByText("Traitée")).toBeTruthy();
     expect(screen.getByText("Remplace la clé old1••••••••old2")).toBeTruthy();
     expect(screen.getByText("Remplacer")).toBeTruthy();
-    expect(screen.getByText("Révoquer")).toBeTruthy();
-    expect(screen.getByText("Supprimer")).toBeTruthy();
+    expect(screen.queryByText("Nouvelle clé")).toBeNull();
   });
 
-  it("affiche encore l'action sur une demande en attente de la clé ciblée", () => {
+  it("remplace l'action principale par « Traiter » sur une demande en attente", () => {
     render(
       <KeysTable
         rows={[
@@ -73,13 +72,12 @@ describe("KeysTable", () => {
     );
 
     expect(screen.getByText("À traiter")).toBeTruthy();
-    expect(screen.getByText("Remplacer la clé")).toBeTruthy();
+    expect(screen.getByText("Traiter")).toBeTruthy();
     expect(screen.queryByText("Remplacer")).toBeNull();
-    expect(screen.getByText("Révoquer")).toBeTruthy();
-    expect(screen.getByText("Supprimer")).toBeTruthy();
+    expect(screen.queryByText("Nouvelle clé")).toBeNull();
   });
 
-  it("propose de renouveler une clé révoquée sans action de révocation", () => {
+  it("propose de renouveler une clé révoquée", () => {
     render(
       <KeysTable
         rows={[
@@ -94,7 +92,5 @@ describe("KeysTable", () => {
     );
 
     expect(screen.getByText("Remplacer")).toBeTruthy();
-    expect(screen.getByText("Supprimer")).toBeTruthy();
-    expect(screen.queryByText("Révoquer")).toBeNull();
   });
 });

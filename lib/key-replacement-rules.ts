@@ -63,3 +63,18 @@ export function buildKeyReplacementViews(requests: KeyReplacementViewSource[]): 
   }
   return byKeyId;
 }
+
+export const KEY_FILTER_STATUSES = ["ALL", "ACTIVE", "REVOKED"] as const;
+export type KeyFilterStatus = (typeof KEY_FILTER_STATUSES)[number];
+export type KeyTableFilters = { query: string; status: KeyFilterStatus };
+
+/** Filtre les lignes de la vue des clés par statut et par recherche d'identité. */
+export function matchesKeyFilters(
+  row: { member: string; discordId: string; fingerprint: string; status: string },
+  filters: KeyTableFilters,
+): boolean {
+  if (filters.status !== "ALL" && row.status !== filters.status) return false;
+  const query = filters.query.trim().toLocaleLowerCase();
+  if (!query) return true;
+  return `${row.member} ${row.discordId} ${row.fingerprint}`.toLocaleLowerCase().includes(query);
+}

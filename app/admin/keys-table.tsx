@@ -1,7 +1,17 @@
 "use client";
 
-import { Space, Table, Tag, Typography, type TableColumnsType } from "antd";
+import { useMemo } from "react";
+import { Button, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
 import { KeyActions } from "@/app/admin/key-actions";
+import { usePersistentState } from "@/app/components/use-persistent-state";
+import { matchesKeyFilters, type KeyTableFilters } from "@/lib/key-replacement-rules";
+
+const DEFAULT_KEY_FILTERS: KeyTableFilters = { query: "", status: "ALL" };
+const STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "Tous les statuts" },
+  { value: "ACTIVE", label: "Actives" },
+  { value: "REVOKED", label: "Révoquées" },
+];
 
 export type KeyRow = {
   id: string;
@@ -24,6 +34,10 @@ export type KeyRow = {
 };
 
 export function KeysTable({ rows }: { rows: KeyRow[] }) {
+  const [filters, setFilters] = usePersistentState<KeyTableFilters>("sfr:keys-filters-v1", DEFAULT_KEY_FILTERS);
+  const patch = (next: Partial<KeyTableFilters>) => setFilters((previous) => ({ ...previous, ...next }));
+  const visibleRows = useMemo(() => rows.filter((row) => matchesKeyFilters(row, filters)), [rows, filters]);
+
   const columns: TableColumnsType<KeyRow> = [
     {
       title: "Membre",
@@ -89,13 +103,36 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
   ];
 
   return (
-    <Table<KeyRow>
-      rowKey="id"
-      columns={columns}
-      dataSource={rows}
-      pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
-      scroll={{ x: "max-content" }}
-      locale={{ emptyText: "Aucune clé enregistrée." }}
-    />
+    <>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Input
+          type="search"
+          aria-label="Rechercher une clé"
+          placeholder="Rechercher un membre ou un identifiant…"
+          value={filters.query}
+          onChange={(event) => patch({ query: event.target.value })}
+          style={{ width: 300 }}
+        />
+        <Select
+          aria-label="Filtrer par statut"
+          value={filters.status}
+          onChange={(value) => patch({ status: value as KeyTableFilters["status"] })}
+          options={STATUS_FILTER_OPTIONS}
+          style={{ width: 180 }}
+        />
+        <Button onClick={() => setFilters({ ...DEFAULT_KEY_FILTERS })}>Réinitialiser les filtres</Button>
+        <Typography.Text type="secondary">
+          {visibleRows.length}/{rows.length}
+        </Typography.Text>
+      </Space>
+      <Table<KeyRow>
+        rowKey="id"
+        columns={columns}
+        dataSource={visibleRows}
+        pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
+        scroll={{ x: "max-content" }}
+        locale={{ emptyText: "Aucune clé enregistrée." }}
+      />
+    </>
   );
 }

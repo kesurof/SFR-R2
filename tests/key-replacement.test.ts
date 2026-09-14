@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildKeyReplacementAdminMessage, keyReplacementAdminUrl } from "../lib/key-replacement-notifications";
-import { KEY_REPLACEMENT_REASON_MAX, buildKeyReplacementViews, keyReplacementDecisionError, keyReplacementInputError, type KeyReplacementViewSource } from "../lib/key-replacement-rules";
+import { KEY_REPLACEMENT_REASON_MAX, buildKeyReplacementViews, keyReplacementDecisionError, keyReplacementInputError, matchesKeyFilters, type KeyReplacementViewSource } from "../lib/key-replacement-rules";
 
 describe("remplacement de clé", () => {
   it("exige un motif et applique la limite de longueur", () => {
@@ -80,5 +80,22 @@ describe("rattachement des remplacements aux clés", () => {
       request({ id: "ancien", status: "PENDING", createdAt: new Date("2026-09-14T08:00:00.000Z") }),
     ]);
     expect(views.get("key_old")?.id).toBe("recent");
+  });
+});
+
+describe("filtres de la vue des clés", () => {
+  const row = { member: "Membre test", discordId: "235787075012657152", fingerprint: "sfr_••••••••Vit6", status: "ACTIVE" };
+
+  it("filtre par statut", () => {
+    expect(matchesKeyFilters(row, { query: "", status: "ACTIVE" })).toBe(true);
+    expect(matchesKeyFilters(row, { query: "", status: "REVOKED" })).toBe(false);
+    expect(matchesKeyFilters(row, { query: "", status: "ALL" })).toBe(true);
+  });
+
+  it("recherche sur le membre, l'identifiant et l'empreinte", () => {
+    expect(matchesKeyFilters(row, { query: "membre", status: "ALL" })).toBe(true);
+    expect(matchesKeyFilters(row, { query: "235787075012657152", status: "ALL" })).toBe(true);
+    expect(matchesKeyFilters(row, { query: "Vit6", status: "ALL" })).toBe(true);
+    expect(matchesKeyFilters(row, { query: "introuvable", status: "ALL" })).toBe(false);
   });
 });

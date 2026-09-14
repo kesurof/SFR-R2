@@ -1,7 +1,19 @@
 type CachedMembership = { member: boolean; expiresAt: number };
 
 const cache = new Map<string, CachedMembership>();
-const TTL_MS = 60_000;
+const MEMBER_TTL_MS = 60_000;
+const TRANSIENT_TTL_MS = 5_000;
+
+/**
+ * Durée pendant laquelle mémoriser le résultat d'une vérification. Une réponse
+ * définitive (membre ou 404) est gardée plus longtemps ; une erreur transitoire
+ * (429, 5xx, réseau) est réessayée rapidement au lieu de verrouiller un membre.
+ */
+export function membershipCacheTtl(status: number | null): number {
+  if (status === null) return TRANSIENT_TTL_MS;
+  if (status === 404 || (status >= 200 && status < 300)) return MEMBER_TTL_MS;
+  return TRANSIENT_TTL_MS;
+}
 
 export async function isDiscordMember(discordId: string): Promise<boolean> {
   const now = Date.now();
@@ -18,11 +30,11 @@ export async function isDiscordMember(discordId: string): Promise<boolean> {
       cache: "no-store",
     });
     const member = response.ok;
-    cache.set(discordId, { member, expiresAt: now + TTL_MS });
+    cache.set(discordId, { member, expiresAt: now + membershipCacheTtl(response.status) });
     return member;
   } catch {
     // Fail closed: an unavailable Discord API must not preserve stale access.
-    cache.set(discordId, { member: false, expiresAt: now + 5_000 });
+    cache.set(discordId, { member: false, expiresAt: now + membershipCacheTtl(null) });
     return false;
   }
 }

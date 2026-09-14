@@ -8,13 +8,21 @@ export async function createAccessKey(tx: Prisma.TransactionClient, userId: stri
   const error = accessKeySecretError(trimmed);
   if (error) throw new Error(error);
 
-  return tx.accessKey.create({
-    data: {
-      userId,
-      encryptedSecret: encrypt(trimmed),
-      secretHash: hash(trimmed),
-      prefix: trimmed.slice(0, 4),
-      suffix: trimmed.slice(-4),
-    },
-  });
+  try {
+    return await tx.accessKey.create({
+      data: {
+        userId,
+        encryptedSecret: encrypt(trimmed),
+        secretHash: hash(trimmed),
+        prefix: trimmed.slice(0, 4),
+        suffix: trimmed.slice(-4),
+      },
+    });
+  } catch (caught) {
+    // Index partiel `one_active_key_per_user` : une clé active existe déjà.
+    if (caught && typeof caught === "object" && "code" in caught && caught.code === "P2002") {
+      throw new Error("Une clé active existe déjà pour ce membre. Réessayez.");
+    }
+    throw caught;
+  }
 }

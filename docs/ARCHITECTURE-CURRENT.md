@@ -33,9 +33,11 @@ Un administrateur est un identifiant présent dans `ADMIN_DISCORD_IDS`. Il peut
 accéder à l'administration sans vérification d'appartenance au serveur. Les autres
 utilisateurs doivent être membres du serveur Discord : la vérification interroge
 l'API Discord avec le token du bot et conserve le résultat en mémoire pendant une
-minute. En cas d'absence de configuration ou d'indisponibilité de Discord, l'accès
-est refusé. Les actions de soumission revalident cette appartenance côté serveur,
-au-delà de la protection des pages.
+minute ; une réponse transitoire (429, 5xx ou panne réseau) est mémorisée beaucoup
+plus brièvement pour ne pas verrouiller un membre légitime. En cas d'absence de
+configuration ou d'indisponibilité de Discord, l'accès est refusé. Les actions de
+soumission revalident cette appartenance côté serveur, au-delà de la protection des
+pages.
 
 Les administrateurs gèrent les droits de parrainage et d’approbation, synchronisent les membres,
 décident des demandes, restaurent manuellement des accès, enregistrent, remplacent ou révoquent
@@ -65,6 +67,10 @@ le pseudo serveur, le nom et les anciennetés du compte et de l’adhésion au s
 Les colonnes d’identifiant et de rôles restent disponibles dans la vue
 d’administration des utilisateurs, avec les helpers Discord partagés.
 
+La page `/mon-acces` combine le dernier parrainage et la dernière demande d’accès du
+membre : l’étape affichée est la plus avancée (`ready` > `revoked` > `approved` >
+`pending` > `rejected`), ce qui couvre les deux parcours de délivrance.
+
 ### Parrainage et clé
 
 1. Un parrain autorisé soumet une demande pour un membre Discord, avec une
@@ -79,6 +85,10 @@ d’administration des utilisateurs, avec les helpers Discord partagés.
    active et la demande passe à `KEY_READY`.
 4. La révocation d'une clé active la marque `REVOKED` et fait passer les demandes
    `KEY_READY` concernées à `KEY_REVOKED`.
+
+Toute révocation ou rotation annule aussi les demandes de remplacement `PENDING`
+devenues orphelines. L'invariant d'une seule clé active par membre est garanti en
+base par l'index partiel `one_active_key_per_user`, en plus des contrôles applicatifs.
 
 ### Remplacement de clé
 
@@ -97,11 +107,11 @@ et conserve le motif de décision sur la ligne de la clé ciblée.
 Un administrateur peut aussi remplacer directement une clé active depuis la colonne
 Actions : la même rotation transactionnelle s'applique, une demande `COMPLETED`
 synthétique (`Remplacement initié par un administrateur.`) assure la traçabilité et
-le membre reçoit la même notification `KEY_REPLACED`. L'action est refusée si une
-demande de remplacement est déjà en attente pour la clé. La colonne Actions, fixée à
-droite, expose `Remplacer` et `Révoquer` sur toute clé active et `Remplacer` sur les
-clés révoquées ; le remplacement direct est masqué lorsqu'une demande `PENDING` est
-déjà affichée.
+le membre reçoit la même notification `KEY_REPLACED`. La colonne Actions propose
+l'action principale `Remplacer` (ou `Traiter` quand une demande `PENDING` est
+affichée) puis un menu `⋯` exposant `Révoquer` (clé active), `Refuser la demande`
+(demande en attente) et `Supprimer`. La vue propose une recherche (membre,
+identifiant, empreinte) et un filtre de statut persistés en session.
 
 Le remplacement d'une clé révoquée est un renouvellement : toute clé active du membre
 est d'abord révoquée pour garantir une seule clé active, puis la nouvelle clé est
@@ -160,9 +170,9 @@ La création des enregistrements `AccessKey` est centralisée dans
 de remplacement et de restauration manuelle. Les opérations de restauration sont
 transactionnelles : un échec ne conserve ni nouvel utilisateur ni nouvelle clé.
 
-La synchronisation Discord lit les rôles et pagine les membres du serveur. Elle
-met à jour le nom, surnom de serveur, date d'arrivée et noms de rôles des membres
-connus, puis enregistre son résultat dans `SyncState`.
+La synchronisation Discord lit les rôles et pagine les membres du serveur (reprise
+bornée sur `429`), met à jour par lots le nom, surnom de serveur, date d'arrivée et
+noms de rôles des membres connus, puis enregistre son résultat dans `SyncState`.
 
 Les notifications Discord sont des DM ou des messages de webhook mis en file en base. Leur mise en file ne
 fait pas échouer l'action métier qui les déclenche. Le worker démarré par

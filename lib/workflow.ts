@@ -3,6 +3,7 @@ import { audit, ensureUser, isAdmin } from "@/lib/access";
 import { isDiscordMember } from "@/lib/membership";
 import { createToken, decrypt, hash, mask } from "@/lib/crypto";
 import { createAccessKey } from "@/lib/access-key";
+import { markKeyReadyRequestsRevoked, notifyRejectedReplacements, rejectPendingReplacements } from "@/lib/key-lifecycle";
 import { queueNotification } from "@/lib/discord-notifications";
 import {
   claimRefusal,
@@ -156,10 +157,14 @@ export async function saveKey(requestId: string, secret: string, actorDiscordId:
 
   const key = await prisma.$transaction(async (tx) => {
     // Une seule clé active à la fois par membre.
-    await tx.accessKey.updateMany({
-      where: { userId: referredUserId, status: "ACTIVE" },
-      data: { status: "REVOKED", revokedAt: new Date() },
-    });
+    const activeKeys = await tx.accessKey.findMany({ where: { userId: referredUserId, status: "ACTIVE" }, select: { id: true } });
+    const revokedKeyIds = activeKeys.map((activeKey) => activeKey.id);
+    if (revokedKeyIds.length) {
+      await tx.accessKey.updateMany({
+        where: { id: { in: revokedKeyIds }, status: "ACTIVE" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+    }
 
     const created = await createAccessKey(tx, referredUserId, trimmed);
 
@@ -169,40 +174,39 @@ export async function saveKey(requestId: string, secret: string, actorDiscordId:
     await tx.auditLog.create({ data: { event: "ACCESS_KEY_CREATED", ...auditBase } });
     await tx.auditLog.create({ data: { event: "SPONSOR_REQUEST_KEY_READY", ...auditBase } });
 
-    return created;
+    const rejected = await rejectPendingReplacements(tx, revokedKeyIds, actorDiscordId);
+    return { created, rejected };
   });
+
+  await notifyRejectedReplacements(key.rejected);
 
   await queueNotification({
     type: "KEY_READY",
     targetId: referredDiscordId,
     requestId,
-    keyId: key.id,
-    dedupeKey: `key-ready:${key.id}`,
+    keyId: key.created.id,
+    dedupeKey: `key-ready:${key.created.id}`,
     message: `Votre clé est disponible. Connectez-vous au portail : ${process.env.NEXTAUTH_URL ?? ""}`,
   });
 
-  return key;
+  return key.created;
 }
 
 export async function revokeKey(keyId: string, actorDiscordId: string) {
-  const key = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const revoked = await tx.accessKey.update({
       where: { id: keyId, status: "ACTIVE" },
       data: { status: "REVOKED", revokedAt: new Date() },
       include: { user: true },
     });
-    await tx.sponsorshipRequest.updateMany({
-      where: { referredId: revoked.userId, status: "KEY_READY" },
-      data: { status: "KEY_REVOKED" },
-    });
-    await tx.accessRequest.updateMany({
-      where: { requesterId: revoked.userId, status: "KEY_READY" },
-      data: { status: "KEY_REVOKED" },
-    });
-    return revoked;
+    await markKeyReadyRequestsRevoked(tx, revoked.userId);
+    const rejected = await rejectPendingReplacements(tx, [keyId], actorDiscordId);
+    return { revoked, rejected };
   });
 
+  const key = result.revoked;
   const target = key.user.discordId;
+  await notifyRejectedReplacements(result.rejected);
   await audit("ACCESS_KEY_REVOKED", actorDiscordId, target, undefined, key.id);
   await audit("SPONSOR_REQUEST_KEY_REVOKED", actorDiscordId, target, undefined, key.id);
   await queueNotification({

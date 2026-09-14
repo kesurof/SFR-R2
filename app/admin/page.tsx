@@ -21,7 +21,7 @@ type View = "requests" | "users" | "keys" | "restore" | "settings";
 const VIEWS: { id: View; label: string }[] = [
   { id: "requests", label: "Demandes" },
   { id: "users", label: "Utilisateurs" },
-  { id: "keys", label: "Clés actives" },
+  { id: "keys", label: "Clés" },
   { id: "restore", label: "Restaurer un accès" },
   { id: "settings", label: "Configuration" },
 ];

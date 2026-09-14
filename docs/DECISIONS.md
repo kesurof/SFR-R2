@@ -20,6 +20,7 @@ dans le code : leur contexte et leurs alternatives ne sont pas attestés ici.
 | [0009](adr/0009-remplacement-direct-par-administrateur.md) | Accepté | Un administrateur peut remplacer directement une clé active depuis la colonne Actions, avec la même traçabilité qu'une demande traitée. |
 | [0010](adr/0010-renouvellement-cle-revoquee.md) | Accepté | Remplacer une clé révoquée la renouvelle en révoquant au préalable toute clé active du membre. |
 | [0011](adr/0011-suppression-definitive-cle.md) | Accepté | La suppression d'une clé est définitive : révocation préalable si active, suppression des demandes liées, audit `ACCESS_KEY_DELETED`. |
+| [0012](adr/0012-cle-active-unique-et-demandes-orphelines.md) | Accepté | Index partiel d'une clé active unique et rejet automatique des demandes de remplacement devenues orphelines. |
 
 Les ADR futures sont créées sous `docs/adr/NNNN-titre-court.md`, avec une
 numérotation séquentielle à quatre chiffres. `DECISIONS.md` est l'index de ces ADR,

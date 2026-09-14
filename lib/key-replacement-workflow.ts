@@ -4,6 +4,12 @@ import { audit } from "@/lib/access";
 import { hash } from "@/lib/crypto";
 import { createAccessKey } from "@/lib/access-key";
 import { accessKeyFingerprint } from "@/lib/access-key-rules";
+import {
+  markKeyReadyRequestsRevoked,
+  notifyRejectedReplacements,
+  rejectPendingReplacements,
+  type RejectedReplacement,
+} from "@/lib/key-lifecycle";
 import { queueNotification } from "@/lib/discord-notifications";
 import { buildKeyReplacementAdminMessage, keyReplacementAdminUrl } from "@/lib/key-replacement-notifications";
 import { keyReplacementDecisionError, keyReplacementInputError } from "@/lib/key-replacement-rules";
@@ -142,6 +148,7 @@ export async function replaceKeyById(keyId: string, secret: string, actorDiscord
     let reason: string;
     let origin: string;
     let revokedActiveKeyIds: string[] = [];
+    let rejected: RejectedReplacement[] = [];
 
     if (key.status === "ACTIVE") {
       const pending = await tx.keyReplacementRequest.findFirst({ where: { currentKeyId: keyId, status: "PENDING" } });
@@ -166,6 +173,7 @@ export async function replaceKeyById(keyId: string, secret: string, actorDiscord
           data: { status: "REVOKED", revokedAt: new Date() },
         });
       }
+      rejected = await rejectPendingReplacements(tx, revokedActiveKeyIds, actorDiscordId);
 
       created = await createAccessKey(tx, key.userId, trimmed);
       reason = "Renouvellement d’une clé révoquée par un administrateur.";
@@ -195,9 +203,10 @@ export async function replaceKeyById(keyId: string, secret: string, actorDiscord
         metadata: JSON.stringify({ previousKeyId: keyId, revokedActiveKeyIds, origin }),
       },
     });
-    return { created, user: key.user, replacementId: replacement.id };
+    return { created, user: key.user, replacementId: replacement.id, rejected };
   });
 
+  await notifyRejectedReplacements(result.rejected);
   await queueNotification({
     type: "KEY_REPLACED",
     targetId: result.user.discordId,
@@ -248,6 +257,10 @@ export async function deleteAccessKey(keyId: string, actorDiscordId: string) {
         data: { status: "REVOKED", revokedAt: new Date() },
       });
       if (revoked.count !== 1) throw new Error("Cette clé n’est plus active.");
+      await markKeyReadyRequestsRevoked(tx, key.userId);
+      await tx.auditLog.create({
+        data: { event: "ACCESS_KEY_REVOKED", actorDiscordId, targetDiscordId: key.user.discordId, keyId },
+      });
     }
 
     const linkedRequests = await tx.keyReplacementRequest.findMany({

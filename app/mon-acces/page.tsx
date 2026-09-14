@@ -9,6 +9,7 @@ import { PendingButton } from "@/app/components/pending-button";
 import { requireMember } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { CreateClaimButton } from "@/app/components/create-claim-button";
+import { ACCESS_STAGE_STEP, computeAccessStage } from "@/lib/mon-access-rules";
 
 const STEPS = [
   { title: "Demande de parrainage", description: "Soumise par ton parrain" },
@@ -17,32 +18,32 @@ const STEPS = [
   { title: "Clé disponible", description: "À récupérer via un lien personnel" },
 ];
 
-type Stage = "none" | "pending" | "approved" | "ready" | "rejected" | "revoked";
-const DONE: Record<Stage, number> = { none: 0, pending: 1, approved: 2, ready: 4, rejected: 1, revoked: 2 };
-
 export default async function AccessPage() {
   const actor = await requireMember();
   const user = await prisma.user.findUnique({
     where: { discordId: actor.discordId },
     include: {
       referredRequests: { orderBy: { createdAt: "desc" }, take: 1 },
+      accessRequests: { orderBy: { createdAt: "desc" }, take: 1 },
       accessKeys: { where: { status: "ACTIVE" }, take: 1 },
       keyReplacementRequests: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
 
   const req = user?.referredRequests[0];
+  const directRequest = user?.accessRequests[0];
   const hasActiveKey = (user?.accessKeys.length ?? 0) > 0;
   const replacement = user?.keyReplacementRequests[0];
 
-  let stage: Stage = "none";
-  if (hasActiveKey || req?.status === "KEY_READY") stage = "ready";
-  else if (req?.status === "KEY_REVOKED") stage = "revoked";
-  else if (req?.status === "REJECTED") stage = "rejected";
-  else if (req?.status === "APPROVED") stage = "approved";
-  else if (req?.status === "PENDING") stage = "pending";
+  const stage = computeAccessStage({
+    hasActiveKey,
+    sponsorshipStatus: req?.status,
+    accessRequestStatus: directRequest?.status,
+  });
+  const done = ACCESS_STAGE_STEP[stage];
 
-  const done = DONE[stage];
+  const rejectionReason =
+    directRequest?.status === "REJECTED" ? directRequest.decisionComment : req?.status === "REJECTED" ? req.rejectionReason : null;
 
   return (
     <Space direction="vertical" size="large" style={{ display: "flex" }}>
@@ -115,16 +116,16 @@ export default async function AccessPage() {
               <Alert
                 type="error"
                 showIcon
-                message="Ta demande de parrainage a été refusée."
+                message="Ta demande a été refusée."
                 description={
                   <>
-                    {req?.rejectionReason ? <p>{req.rejectionReason}</p> : null}
-                    <Text type="secondary">Tu peux en discuter avec ton parrain, qui peut soumettre une nouvelle demande.</Text>
+                    {rejectionReason ? <p>{rejectionReason}</p> : null}
+                    <Text type="secondary">Tu peux en discuter avec ton parrain, ou soumettre une nouvelle demande d&apos;accès.</Text>
                   </>
                 }
               />
             ) : stage === "none" ? (
-              <Alert type="info" showIcon message="Aucun accès n'a encore été préparé. Fais-toi parrainer sur le serveur Discord." />
+              <Alert type="info" showIcon message="Aucun accès n'a encore été préparé. Fais-toi parrainer ou soumets une demande d'accès sur le serveur Discord." />
             ) : (
               <Alert type="warning" showIcon message="Ta demande suit son cours. Tu pourras générer ton lien dès que la clé sera prête." />
             )}

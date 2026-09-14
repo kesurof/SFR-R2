@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/access";
 import { hash } from "@/lib/crypto";
@@ -9,6 +10,23 @@ import { keyReplacementDecisionError, keyReplacementInputError } from "@/lib/key
 
 const adminIds = () => [...new Set((process.env.ADMIN_DISCORD_IDS ?? "").split(",").map((id) => id.trim()).filter(Boolean))];
 const portal = () => (process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "");
+
+/**
+ * Rotation d'une clé active : garantit que la clé ciblée est encore active, refuse
+ * une clé identique et crée la nouvelle. Le secret n'est jamais journalisé.
+ */
+async function rotateAccessKey(
+  tx: Prisma.TransactionClient,
+  input: { currentKeyId: string; userId: string; currentSecretHash: string; secret: string },
+) {
+  if (hash(input.secret) === input.currentSecretHash) throw new Error("La nouvelle clé doit être différente de l’ancienne.");
+  const revoked = await tx.accessKey.updateMany({
+    where: { id: input.currentKeyId, status: "ACTIVE" },
+    data: { status: "REVOKED", revokedAt: new Date() },
+  });
+  if (revoked.count !== 1) throw new Error("La clé ciblée n’est plus active.");
+  return createAccessKey(tx, input.userId, input.secret);
+}
 
 export async function requestKeyReplacement(actor: { discordId: string }, reason: string) {
   const error = keyReplacementInputError(reason);
@@ -70,12 +88,13 @@ export async function replaceKey(requestId: string, secret: string, actorDiscord
     const request = await tx.keyReplacementRequest.findUnique({ where: { id: requestId }, include: { user: true, currentKey: true } });
     if (!request || request.status !== "PENDING") throw new Error("Cette demande de remplacement a déjà été traitée.");
     if (request.currentKey.status !== "ACTIVE") throw new Error("La clé ciblée n’est plus active.");
-    if (hash(trimmed) === request.currentKey.secretHash) throw new Error("La nouvelle clé doit être différente de l’ancienne.");
 
-    const revoked = await tx.accessKey.updateMany({ where: { id: request.currentKeyId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date() } });
-    if (revoked.count !== 1) throw new Error("La clé ciblée n’est plus active.");
-
-    const created = await createAccessKey(tx, request.userId, trimmed);
+    const created = await rotateAccessKey(tx, {
+      currentKeyId: request.currentKeyId,
+      userId: request.userId,
+      currentSecretHash: request.currentKey.secretHash,
+      secret: trimmed,
+    });
     await tx.keyReplacementRequest.update({ where: { id: requestId }, data: { status: "COMPLETED", newKeyId: created.id, decidedByDiscordId: actorDiscordId, decidedAt: new Date() } });
     await tx.auditLog.create({
       data: {
@@ -96,6 +115,63 @@ export async function replaceKey(requestId: string, secret: string, actorDiscord
     replacementRequestId: requestId,
     keyId: result.created.id,
     dedupeKey: `key-replacement-completed:${requestId}`,
+    message: `Votre nouvelle clé est disponible. Connectez-vous au portail : ${portal()}/mon-acces`,
+  });
+  return result.created;
+}
+
+/**
+ * Remplacement direct par un administrateur, sans demande membre préalable. Une
+ * demande `COMPLETED` synthétique est créée pour conserver la traçabilité dans la
+ * vue des clés, et le membre est notifié comme pour un remplacement demandé.
+ */
+export async function replaceActiveKey(keyId: string, secret: string, actorDiscordId: string) {
+  const trimmed = secret.trim();
+  if (!trimmed) throw new Error("La nouvelle clé ne peut pas être vide.");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const currentKey = await tx.accessKey.findUnique({ where: { id: keyId }, include: { user: true } });
+    if (!currentKey || currentKey.status !== "ACTIVE") throw new Error("Cette clé n’est plus active.");
+
+    const pending = await tx.keyReplacementRequest.findFirst({ where: { currentKeyId: keyId, status: "PENDING" } });
+    if (pending) throw new Error("Une demande de remplacement est déjà en attente pour cette clé.");
+
+    const created = await rotateAccessKey(tx, {
+      currentKeyId: keyId,
+      userId: currentKey.userId,
+      currentSecretHash: currentKey.secretHash,
+      secret: trimmed,
+    });
+    const replacement = await tx.keyReplacementRequest.create({
+      data: {
+        userId: currentKey.userId,
+        currentKeyId: keyId,
+        newKeyId: created.id,
+        reason: "Remplacement initié par un administrateur.",
+        status: "COMPLETED",
+        decidedByDiscordId: actorDiscordId,
+        decidedAt: new Date(),
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        event: "ACCESS_KEY_REPLACED",
+        actorDiscordId,
+        targetDiscordId: currentKey.user.discordId,
+        keyId: created.id,
+        replacementRequestId: replacement.id,
+        metadata: JSON.stringify({ previousKeyId: keyId, origin: "ADMIN" }),
+      },
+    });
+    return { created, user: currentKey.user, replacementId: replacement.id };
+  });
+
+  await queueNotification({
+    type: "KEY_REPLACED",
+    targetId: result.user.discordId,
+    replacementRequestId: result.replacementId,
+    keyId: result.created.id,
+    dedupeKey: `key-replaced-admin:${result.replacementId}`,
     message: `Votre nouvelle clé est disponible. Connectez-vous au portail : ${portal()}/mon-acces`,
   });
   return result.created;

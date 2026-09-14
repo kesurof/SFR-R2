@@ -5,6 +5,7 @@ import { replaceKeyAction, rejectKeyReplacementAction, revoke } from "@/app/acti
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
 import { PendingButton } from "@/app/components/pending-button";
 import { RejectDialog } from "@/app/admin/reject-dialog";
+import { ReplaceKeyDialog } from "@/app/admin/replace-key-dialog";
 
 export type KeyRow = {
   id: string;
@@ -101,19 +102,27 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
       title: "Actions",
       key: "actions",
       align: "right",
-      render: (_, row) =>
-        row.status === "ACTIVE" ? (
-          <form action={revoke}>
-            <input type="hidden" name="keyId" value={row.id} />
-            <ConfirmSubmit
-              title="Révoquer cette clé ?"
-              message="Le membre perdra immédiatement l'accès au stockage R2. Une nouvelle clé devra être émise."
-              confirmLabel="Révoquer"
-            >
-              Révoquer
-            </ConfirmSubmit>
-          </form>
-        ) : null,
+      fixed: "right",
+      width: 200,
+      render: (_, row) => {
+        if (row.status !== "ACTIVE") return <Typography.Text type="secondary">—</Typography.Text>;
+        const pendingReplacement = row.replacementRequest?.status === "PENDING" && !row.replacementRequest.isResult;
+        return (
+          <Space size={4} wrap>
+            {!pendingReplacement && <ReplaceKeyDialog keyId={row.id} />}
+            <form action={revoke}>
+              <input type="hidden" name="keyId" value={row.id} />
+              <ConfirmSubmit
+                title="Révoquer cette clé ?"
+                message="Le membre perdra immédiatement l'accès au stockage R2. Une nouvelle clé devra être émise."
+                confirmLabel="Révoquer"
+              >
+                Révoquer
+              </ConfirmSubmit>
+            </form>
+          </Space>
+        );
+      },
     },
   ];
 

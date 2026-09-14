@@ -94,6 +94,15 @@ demande est alors visible sur la ligne de la nouvelle clé active, avec l'emprei
 de la clé remplacée. Un refus conserve la clé active, marque la demande `REJECTED`
 et conserve le motif de décision sur la ligne de la clé ciblée.
 
+Un administrateur peut aussi remplacer directement une clé active depuis la colonne
+Actions : la même rotation transactionnelle s'applique, une demande `COMPLETED`
+synthétique (`Remplacement initié par un administrateur.`) assure la traçabilité et
+le membre reçoit la même notification `KEY_REPLACED`. L'action est refusée si une
+demande de remplacement est déjà en attente pour la clé. La colonne Actions, fixée à
+droite, expose `Remplacer` et `Révoquer` sur toute clé active, et `—` sur les clés
+révoquées ; le remplacement direct est masqué lorsqu'une demande `PENDING` est déjà
+affichée.
+
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.
 

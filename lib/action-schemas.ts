@@ -87,6 +87,11 @@ export const replaceKeySchema = zfd.formData({
   secret: zfd.text(z.string()),
 }).superRefine((value, ctx) => addBusinessIssue(ctx, accessKeySecretError(value.secret)));
 
+export const replaceActiveKeySchema = zfd.formData({
+  keyId: zfd.text(trimmed()),
+  secret: zfd.text(z.string()),
+}).superRefine((value, ctx) => addBusinessIssue(ctx, accessKeySecretError(value.secret)));
+
 export const rejectKeyReplacementSchema = zfd.formData({
   replacementRequestId: zfd.text(trimmed()),
   decisionComment: zfd.text(z.string().trim()),

@@ -1,9 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeysTable, type KeyRow } from "../app/admin/keys-table";
+
+afterEach(cleanup);
 
 vi.mock("@/app/actions", () => ({
   replaceKeyAction: vi.fn(),
+  replaceActiveKeyAction: vi.fn(),
   rejectKeyReplacementAction: vi.fn(),
   revoke: vi.fn(),
 }));
@@ -43,6 +46,8 @@ describe("KeysTable", () => {
 
     expect(screen.getByText("Traitée")).toBeTruthy();
     expect(screen.getByText("Remplace la clé old1••••••••old2")).toBeTruthy();
+    expect(screen.getByText("Remplacer")).toBeTruthy();
+    expect(screen.getByText("Révoquer")).toBeTruthy();
   });
 
   it("affiche encore l'action sur une demande en attente de la clé ciblée", () => {
@@ -67,5 +72,6 @@ describe("KeysTable", () => {
 
     expect(screen.getByText("À traiter")).toBeTruthy();
     expect(screen.getByText("Remplacer la clé")).toBeTruthy();
+    expect(screen.queryByText("Remplacer")).toBeNull();
   });
 });

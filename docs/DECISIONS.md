@@ -22,6 +22,7 @@ dans le code : leur contexte et leurs alternatives ne sont pas attestés ici.
 | [0011](adr/0011-suppression-definitive-cle.md) | Accepté | La suppression d'une clé est définitive : révocation préalable si active, suppression des demandes liées, audit `ACCESS_KEY_DELETED`. |
 | [0012](adr/0012-cle-active-unique-et-demandes-orphelines.md) | Accepté | Index partiel d'une clé active unique et rejet automatique des demandes de remplacement devenues orphelines. |
 | [0013](adr/0013-adaptation-mobile.md) | Accepté | Adaptation mobile sous `lg` (Drawer, cartes) sans modifier le rendu desktop. |
+| [0014](adr/0014-origine-des-cles.md) | Accepté | L'origine de chaque clé (demande directe, parrainage, restauration) est dérivée des journaux d'audit et affichée dans une colonne `Origine`. |
 
 Les ADR futures sont créées sous `docs/adr/NNNN-titre-court.md`, avec une
 numérotation séquentielle à quatre chiffres. `DECISIONS.md` est l'index de ces ADR,

@@ -21,7 +21,7 @@ const row = (overrides: Partial<KeyRow> = {}): KeyRow => ({
   status: "ACTIVE",
   revokedAt: null,
   createdAt: "2026-09-14T12:00:00.000Z",
-  sponsor: "Équipe",
+  origin: { kind: "unknown", label: "—", approver: null, approverVerb: "" },
   replacementRequest: null,
   ...overrides,
 });

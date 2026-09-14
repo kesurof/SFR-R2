@@ -7,12 +7,13 @@ import Password from "antd/es/input/Password";
 import { clearAccessRequestWebhook, updateNotificationSettings } from "@/app/actions";
 import { UserManagement } from "@/app/admin/user-management";
 import { RequestTable } from "@/app/admin/request-table";
-import { KeysTable, type KeyRow } from "@/app/admin/keys-table";
+import { KeysTable, type KeyOriginView, type KeyRow } from "@/app/admin/keys-table";
 import { RestoreAccessForm } from "@/app/admin/restore-access-form";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
 import { FormField } from "@/app/components/form-field";
 import { identity, isAdmin } from "@/lib/access";
 import { accessKeyFingerprint } from "@/lib/access-key-rules";
+import { previousKeyIdFromMetadata, resolveKeyOrigin, type KeyOriginAudit } from "@/lib/key-origin";
 import { buildKeyReplacementViews } from "@/lib/key-replacement-rules";
 import { prisma } from "@/lib/prisma";
 import { getNotificationSettings } from "@/lib/settings";
@@ -46,6 +47,33 @@ async function fetchAudits(requestIds: string[]): Promise<AuditRow[]> {
     );
   }
   return rows;
+}
+
+const KEY_ORIGIN_EVENTS = ["ACCESS_KEY_CREATED", "ACCESS_REQUEST_KEY_READY", "ACCESS_KEY_REPLACED", "ACCESS_KEY_RESTORED_MANUALLY"];
+const ORIGIN_CHAIN_DEPTH = 5;
+
+/** Audits de création des clés, en suivant les remplacements pour retrouver l'origine. */
+async function fetchOriginAudits(seedKeyIds: string[]): Promise<Map<string, KeyOriginAudit>> {
+  const byKeyId = new Map<string, KeyOriginAudit>();
+  let pending = [...new Set(seedKeyIds)];
+  for (let depth = 0; depth < ORIGIN_CHAIN_DEPTH && pending.length; depth += 1) {
+    const rows = await prisma.auditLog.findMany({
+      where: { keyId: { in: pending }, event: { in: KEY_ORIGIN_EVENTS } },
+      orderBy: { createdAt: "asc" },
+      select: { keyId: true, event: true, actorDiscordId: true, requestId: true, metadata: true },
+    });
+    const next = new Set<string>();
+    for (const row of rows) {
+      if (!row.keyId || byKeyId.has(row.keyId)) continue;
+      byKeyId.set(row.keyId, { event: row.event, actorDiscordId: row.actorDiscordId, requestId: row.requestId, metadata: row.metadata });
+      if (row.event === "ACCESS_KEY_REPLACED") {
+        const previous = previousKeyIdFromMetadata(row.metadata);
+        if (previous && !byKeyId.has(previous)) next.add(previous);
+      }
+    }
+    pending = [...next];
+  }
+  return byKeyId;
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ view?: string; replacementRequest?: string }> }) {
@@ -117,20 +145,72 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     else auditsByRequest.set(row.requestId, [row]);
   }
 
-  // Parrain de chaque clé : une seule requête pour toutes les clés (au lieu d'une par clé).
-  const keyUserIds = [...new Set(displayKeys.map((key) => key.userId))];
-  const sponsorSources = keyUserIds.length
-    ? await prisma.sponsorshipRequest.findMany({
-        where: { referredId: { in: keyUserIds } },
-        orderBy: { createdAt: "desc" },
-        include: { sponsor: true },
-      })
+  // Origine de chaque clé : audits de création, puis résolution des noms.
+  const auditsByKeyId = await fetchOriginAudits(displayKeys.map((key) => key.id));
+  const keyOrigins = displayKeys.map((key) => resolveKeyOrigin(key.id, auditsByKeyId));
+
+  const directRequestIds = [...new Set(keyOrigins.flatMap((origin) => (origin.kind === "direct" ? [origin.accessRequestId] : [])))];
+  const sponsorshipRequestIds = [...new Set(keyOrigins.flatMap((origin) => (origin.kind === "sponsorship" ? [origin.sponsorshipRequestId] : [])))];
+  const [directRequests, sponsorshipSources] = await Promise.all([
+    directRequestIds.length
+      ? prisma.accessRequest.findMany({ where: { id: { in: directRequestIds } }, select: { id: true, decidedByDiscordId: true } })
+      : Promise.resolve([]),
+    sponsorshipRequestIds.length
+      ? prisma.sponsorshipRequest.findMany({ where: { id: { in: sponsorshipRequestIds } }, include: { sponsor: true } })
+      : Promise.resolve([]),
+  ]);
+  const directRequestById = new Map(directRequests.map((request) => [request.id, request]));
+  const sponsorshipById = new Map(sponsorshipSources.map((request) => [request.id, request]));
+
+  const originDiscordIds = new Set<string>();
+  keyOrigins.forEach((origin) => {
+    if (origin.kind === "manual" && origin.actorDiscordId) originDiscordIds.add(origin.actorDiscordId);
+    if (origin.kind === "direct") {
+      const decidedBy = directRequestById.get(origin.accessRequestId)?.decidedByDiscordId;
+      if (decidedBy) originDiscordIds.add(decidedBy);
+    }
+    if (origin.kind === "sponsorship") {
+      const request = sponsorshipById.get(origin.sponsorshipRequestId);
+      if (request) {
+        originDiscordIds.add(request.sponsor.discordId);
+        if (request.decidedByDiscordId) originDiscordIds.add(request.decidedByDiscordId);
+      }
+    }
+  });
+  const originUsers = originDiscordIds.size
+    ? await prisma.user.findMany({ where: { discordId: { in: [...originDiscordIds] } }, select: { discordId: true, username: true, serverNickname: true } })
     : [];
-  const sponsorByReferred = new Map<string, string>();
-  for (const source of sponsorSources) {
-    if (sponsorByReferred.has(source.referredId)) continue; // le tri décroissant garde la plus récente
-    sponsorByReferred.set(source.referredId, source.sponsor.serverNickname || source.sponsor.username);
-  }
+  const originNames = new Map(originUsers.map((user) => [user.discordId, user.serverNickname || user.username]));
+  const originName = (discordId?: string | null) => (discordId ? originNames.get(discordId) ?? discordId : null);
+
+  const originByKeyId = new Map<string, KeyOriginView>();
+  displayKeys.forEach((key, index) => {
+    const origin = keyOrigins[index];
+    let view: KeyOriginView;
+    switch (origin.kind) {
+      case "direct": {
+        const request = directRequestById.get(origin.accessRequestId);
+        view = { kind: "direct", label: "Demande directe", approver: originName(request?.decidedByDiscordId), approverVerb: "Acceptée par" };
+        break;
+      }
+      case "sponsorship": {
+        const request = sponsorshipById.get(origin.sponsorshipRequestId);
+        view = {
+          kind: "sponsorship",
+          label: request ? request.sponsor.serverNickname || request.sponsor.username : "Parrainage",
+          approver: originName(request?.decidedByDiscordId),
+          approverVerb: "Acceptée par",
+        };
+        break;
+      }
+      case "manual":
+        view = { kind: "manual", label: "Restauration manuelle", approver: originName(origin.actorDiscordId), approverVerb: "Restaurée par" };
+        break;
+      default:
+        view = { kind: "unknown", label: "—", approver: null, approverVerb: "" };
+    }
+    originByKeyId.set(key.id, view);
+  });
 
   const keyRows: KeyRow[] = displayKeys.map((key) => {
     const replacement = replacementByKeyId.get(key.id) ?? null;
@@ -142,7 +222,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       status: key.status,
       revokedAt: key.revokedAt?.toISOString() ?? null,
       createdAt: key.createdAt.toISOString(),
-      sponsor: sponsorByReferred.get(key.userId) ?? "Équipe",
+      origin: originByKeyId.get(key.id) ?? { kind: "unknown", label: "—", approver: null, approverVerb: "" },
       replacementRequest: replacement
         ? {
             id: replacement.id,

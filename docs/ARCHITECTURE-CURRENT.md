@@ -123,6 +123,13 @@ affichée) puis un menu `⋯` exposant `Révoquer` (clé active), `Refuser la de
 (demande en attente) et `Supprimer`. La vue propose une recherche (membre,
 identifiant, empreinte) et un filtre de statut persistés en session.
 
+La colonne `Origine` indique la provenance de chaque clé : `Demande directe`, le
+pseudo du parrain, ou `Restauration manuelle`, suivie du pseudo de l'approbateur ou de
+l'administrateur qui l'a acceptée ou restaurée. L'origine est déduite des journaux
+d'audit de création (`ACCESS_REQUEST_KEY_READY`, `ACCESS_KEY_CREATED`,
+`ACCESS_KEY_RESTORED_MANUALLY`) et, pour un remplacement, de la clé d'origine via
+`ACCESS_KEY_REPLACED`.
+
 Le remplacement d'une clé révoquée est un renouvellement : toute clé active du membre
 est d'abord révoquée pour garantir une seule clé active, puis la nouvelle clé est
 créée et une demande `COMPLETED` synthétique (`Renouvellement d'une clé révoquée par

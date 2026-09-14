@@ -36,7 +36,7 @@ const baseRow: KeyRow = {
   status: "ACTIVE",
   revokedAt: null,
   createdAt: "2026-09-14T12:00:00.000Z",
-  sponsor: "Équipe",
+  origin: { kind: "direct", label: "Demande directe", approver: "laster13", approverVerb: "Acceptée par" },
   replacementRequest: null,
 };
 
@@ -63,6 +63,8 @@ describe("KeysTable", () => {
 
     expect(screen.getByText("Traitée")).toBeTruthy();
     expect(screen.getByText("Remplace la clé old1••••••••old2")).toBeTruthy();
+    expect(screen.getByText("Demande directe")).toBeTruthy();
+    expect(screen.getByText("Acceptée par laster13")).toBeTruthy();
     expect(screen.getByText("Remplacer")).toBeTruthy();
     expect(screen.queryByText("Nouvelle clé")).toBeNull();
   });
@@ -115,7 +117,9 @@ describe("KeysTable", () => {
     render(<KeysTable rows={[baseRow]} />);
 
     expect(screen.getByText("Membre test")).toBeTruthy();
-    expect(screen.getByText((_, element) => element?.tagName === "SPAN" && element.textContent === "Parrainé par Équipe")).toBeTruthy();
+    expect(
+      screen.getByText((_, element) => element?.tagName === "SPAN" && (element.textContent ?? "").startsWith("Demande directe")),
+    ).toBeTruthy();
     expect(document.querySelector(".ant-table")).toBeNull();
     expect(document.querySelector(".ant-card")).toBeTruthy();
   });

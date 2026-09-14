@@ -16,6 +16,13 @@ const STATUS_FILTER_OPTIONS = [
   { value: "REVOKED", label: "Révoquées" },
 ];
 
+export type KeyOriginView = {
+  kind: "direct" | "sponsorship" | "manual" | "unknown";
+  label: string;
+  approver: string | null;
+  approverVerb: string;
+};
+
 export type KeyRow = {
   id: string;
   member: string;
@@ -24,7 +31,7 @@ export type KeyRow = {
   status: string;
   revokedAt: string | null;
   createdAt: string;
-  sponsor: string;
+  origin: KeyOriginView;
   replacementRequest: {
     id: string;
     status: string;
@@ -90,9 +97,18 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
       render: (_, row) => <MemberLabel row={row} />,
     },
     {
-      title: "Parrainé par",
-      key: "sponsor",
-      render: (_, row) => <Typography.Text>{row.sponsor}</Typography.Text>,
+      title: "Origine",
+      key: "origin",
+      render: (_, row) => (
+        <>
+          <Typography.Text>{row.origin.label}</Typography.Text>
+          {row.origin.approver && (
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              {row.origin.approverVerb} {row.origin.approver}
+            </Typography.Text>
+          )}
+        </>
+      ),
     },
     { title: "Empreinte", dataIndex: "fingerprint", key: "fingerprint", render: (value: string) => <Typography.Text code>{value}</Typography.Text> },
     { title: "Émise", dataIndex: "createdAt", key: "createdAt", render: (value: string) => new Date(value).toLocaleDateString("fr-FR") },
@@ -157,7 +173,8 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
                 <>
                   <strong>{row.member}</strong>
                   <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>
-                    Parrainé par {row.sponsor}
+                    {row.origin.label}
+                    {row.origin.approver ? ` · ${row.origin.approverVerb} ${row.origin.approver}` : ""}
                   </Typography.Text>
                 </>
               }

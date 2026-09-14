@@ -8,7 +8,7 @@ import { decideRequest, issueClaim, revokeKey, saveKey, submitRequest } from "@/
 import { discardPendingNotifications, queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
 import { getNotificationSettings, parseNotificationSettingsInput } from "@/lib/settings";
 import { decideAccessRequest, saveAccessRequestKey, submitAccessRequest } from "@/lib/access-request-workflow";
-import { rejectKeyReplacement, replaceActiveKey, replaceKey, requestKeyReplacement } from "@/lib/key-replacement-workflow";
+import { rejectKeyReplacement, replaceKey, replaceKeyById, requestKeyReplacement } from "@/lib/key-replacement-workflow";
 import { restoreManualAccess } from "@/lib/manual-access-workflow";
 import {
   accessRequestDecisionSchema,
@@ -19,7 +19,7 @@ import {
   notificationSettingsSchema,
   permissionActionSchema,
   rejectKeyReplacementSchema,
-  replaceActiveKeySchema,
+  replaceKeyByIdSchema,
   replaceKeySchema,
   requestIdSchema,
   sponsorshipDecisionSchema,
@@ -134,9 +134,9 @@ export const replaceKeyAction = formAction(
   () => adminNoticeUrl("key_replacement_error", "keys"),
 );
 
-export const replaceActiveKeyAction = formAction(
-  adminAction.inputSchema(replaceActiveKeySchema).action(async ({ parsedInput, ctx }) => {
-    await replaceActiveKey(parsedInput.keyId, parsedInput.secret, ctx.actor.discordId);
+export const replaceKeyByIdAction = formAction(
+  adminAction.inputSchema(replaceKeyByIdSchema).action(async ({ parsedInput, ctx }) => {
+    await replaceKeyById(parsedInput.keyId, parsedInput.secret, ctx.actor.discordId);
     revalidatePath("/admin");
     revalidatePath("/mon-acces");
     adminRedirect("key_replaced", "keys");

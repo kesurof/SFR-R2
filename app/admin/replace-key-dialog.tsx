@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Button, Input, Modal } from "antd";
-import { replaceActiveKeyAction } from "@/app/actions";
+import { replaceKeyByIdAction } from "@/app/actions";
 import { ANTI_AUTOFILL_PROPS } from "@/app/components/anti-autofill";
 
-/** Remplacement direct d'une clé active par un administrateur, depuis la vue des clés. */
+/** Remplacement direct d'une clé (active ou révoquée) par un administrateur, depuis la vue des clés. */
 export function ReplaceKeyDialog({ keyId }: { keyId: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -15,7 +15,7 @@ export function ReplaceKeyDialog({ keyId }: { keyId: string }) {
       </Button>
       <Modal title="Remplacer la clé" open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden>
         <form
-          action={replaceActiveKeyAction}
+          action={replaceKeyByIdAction}
           onSubmit={() => setOpen(false)}
           style={{ display: "flex", flexDirection: "column", gap: 12 }}
         >

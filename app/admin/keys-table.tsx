@@ -105,6 +105,13 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
       fixed: "right",
       width: 200,
       render: (_, row) => {
+        if (row.status === "REVOKED") {
+          return (
+            <Space size={4} wrap>
+              <ReplaceKeyDialog keyId={row.id} />
+            </Space>
+          );
+        }
         if (row.status !== "ACTIVE") return <Typography.Text type="secondary">—</Typography.Text>;
         const pendingReplacement = row.replacementRequest?.status === "PENDING" && !row.replacementRequest.isResult;
         return (

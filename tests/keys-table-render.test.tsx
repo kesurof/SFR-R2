@@ -6,7 +6,7 @@ afterEach(cleanup);
 
 vi.mock("@/app/actions", () => ({
   replaceKeyAction: vi.fn(),
-  replaceActiveKeyAction: vi.fn(),
+  replaceKeyByIdAction: vi.fn(),
   rejectKeyReplacementAction: vi.fn(),
   revoke: vi.fn(),
 }));
@@ -73,5 +73,23 @@ describe("KeysTable", () => {
     expect(screen.getByText("À traiter")).toBeTruthy();
     expect(screen.getByText("Remplacer la clé")).toBeTruthy();
     expect(screen.queryByText("Remplacer")).toBeNull();
+  });
+
+  it("propose de renouveler une clé révoquée sans action de révocation", () => {
+    render(
+      <KeysTable
+        rows={[
+          {
+            ...baseRow,
+            id: "key_revoked",
+            status: "REVOKED",
+            revokedAt: "2026-09-14T11:30:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Remplacer")).toBeTruthy();
+    expect(screen.queryByText("Révoquer")).toBeNull();
   });
 });

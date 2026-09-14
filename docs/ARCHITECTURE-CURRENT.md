@@ -99,9 +99,16 @@ Actions : la même rotation transactionnelle s'applique, une demande `COMPLETED`
 synthétique (`Remplacement initié par un administrateur.`) assure la traçabilité et
 le membre reçoit la même notification `KEY_REPLACED`. L'action est refusée si une
 demande de remplacement est déjà en attente pour la clé. La colonne Actions, fixée à
-droite, expose `Remplacer` et `Révoquer` sur toute clé active, et `—` sur les clés
-révoquées ; le remplacement direct est masqué lorsqu'une demande `PENDING` est déjà
-affichée.
+droite, expose `Remplacer` et `Révoquer` sur toute clé active, `Remplacer` sur les
+clés révoquées, et `—` sur les autres ; le remplacement direct est masqué lorsqu'une
+demande `PENDING` est déjà affichée.
+
+Le remplacement d'une clé révoquée est un renouvellement : toute clé active du membre
+est d'abord révoquée pour garantir une seule clé active, puis la nouvelle clé est
+créée et une demande `COMPLETED` synthétique (`Renouvellement d'une clé révoquée par
+un administrateur.`) conserve la traçabilité. La contrainte d'unicité de `newKeyId`
+et l'index partiel d'une seule demande `PENDING` par membre restent la source de
+vérité de ces invariants.
 
 La base conserve des journaux d'audit pour les actions métier et administratives.
 Les demandes peuvent aussi être archivées ou supprimées depuis l'administration.

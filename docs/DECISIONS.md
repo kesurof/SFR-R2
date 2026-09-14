@@ -18,6 +18,7 @@ dans le code : leur contexte et leurs alternatives ne sont pas attestés ici.
 | [0007](adr/0007-restauration-par-recherche-de-membre.md) | Accepté | La restauration d'accès se fait dans un onglet dédié, par recherche d'un membre présent sur le serveur, sans saisie du Discord ID. |
 | [0008](adr/0008-tracabilite-remplacement-nouvelle-cle.md) | Accepté | Un remplacement abouti est rattaché à la nouvelle clé (`newKeyId`) et affiché sur sa ligne dans la vue des clés. |
 | [0009](adr/0009-remplacement-direct-par-administrateur.md) | Accepté | Un administrateur peut remplacer directement une clé active depuis la colonne Actions, avec la même traçabilité qu'une demande traitée. |
+| [0010](adr/0010-renouvellement-cle-revoquee.md) | Accepté | Remplacer une clé révoquée la renouvelle en révoquant au préalable toute clé active du membre. |
 
 Les ADR futures sont créées sous `docs/adr/NNNN-titre-court.md`, avec une
 numérotation séquentielle à quatre chiffres. `DECISIONS.md` est l'index de ces ADR,

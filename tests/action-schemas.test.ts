@@ -1,6 +1,6 @@
 import { createSafeActionClient } from "next-safe-action";
 import { describe, expect, it } from "vitest";
-import { accessRequestFormSchema, notificationSettingsSchema, replaceActiveKeySchema, sponsorshipDecisionSchema, sponsorshipFormSchema } from "../lib/action-schemas";
+import { accessRequestFormSchema, notificationSettingsSchema, replaceKeyByIdSchema, sponsorshipDecisionSchema, sponsorshipFormSchema } from "../lib/action-schemas";
 
 describe("schémas de Server Actions", () => {
   it("nettoie les champs et convertit l’attestation du parrainage", () => {
@@ -45,12 +45,12 @@ describe("schémas de Server Actions", () => {
     const invalid = new FormData();
     invalid.set("keyId", "key-1");
     invalid.set("secret", "   ");
-    expect(replaceActiveKeySchema.safeParse(invalid).success).toBe(false);
+    expect(replaceKeyByIdSchema.safeParse(invalid).success).toBe(false);
 
     const valid = new FormData();
     valid.set("keyId", "key-1");
     valid.set("secret", "  nouvelle-cle  ");
-    const parsed = replaceActiveKeySchema.parse(valid);
+    const parsed = replaceKeyByIdSchema.parse(valid);
     expect(parsed.keyId).toBe("key-1");
     expect(parsed.secret).toBe("  nouvelle-cle  ");
   });

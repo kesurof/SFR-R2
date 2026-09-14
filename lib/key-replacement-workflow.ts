@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { AccessKey, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/access";
 import { hash } from "@/lib/crypto";
@@ -121,33 +121,65 @@ export async function replaceKey(requestId: string, secret: string, actorDiscord
 }
 
 /**
- * Remplacement direct par un administrateur, sans demande membre préalable. Une
- * demande `COMPLETED` synthétique est créée pour conserver la traçabilité dans la
- * vue des clés, et le membre est notifié comme pour un remplacement demandé.
+ * Remplacement direct par un administrateur depuis la vue des clés, par identifiant
+ * de clé. Une demande `COMPLETED` synthétique assure la traçabilité et le membre est
+ * notifié comme pour un remplacement demandé.
+ *
+ * - Clé active : rotation (révocation conditionnelle de la clé ciblée), refusée si
+ *   une demande de remplacement est déjà en attente.
+ * - Clé révoquée : renouvellement ; toute clé active du membre est d'abord révoquée
+ *   afin de garantir une seule clé active.
  */
-export async function replaceActiveKey(keyId: string, secret: string, actorDiscordId: string) {
+export async function replaceKeyById(keyId: string, secret: string, actorDiscordId: string) {
   const trimmed = secret.trim();
   if (!trimmed) throw new Error("La nouvelle clé ne peut pas être vide.");
 
   const result = await prisma.$transaction(async (tx) => {
-    const currentKey = await tx.accessKey.findUnique({ where: { id: keyId }, include: { user: true } });
-    if (!currentKey || currentKey.status !== "ACTIVE") throw new Error("Cette clé n’est plus active.");
+    const key = await tx.accessKey.findUnique({ where: { id: keyId }, include: { user: true } });
+    if (!key) throw new Error("Cette clé est introuvable.");
 
-    const pending = await tx.keyReplacementRequest.findFirst({ where: { currentKeyId: keyId, status: "PENDING" } });
-    if (pending) throw new Error("Une demande de remplacement est déjà en attente pour cette clé.");
+    let created: AccessKey;
+    let reason: string;
+    let origin: string;
+    let revokedActiveKeyIds: string[] = [];
 
-    const created = await rotateAccessKey(tx, {
-      currentKeyId: keyId,
-      userId: currentKey.userId,
-      currentSecretHash: currentKey.secretHash,
-      secret: trimmed,
-    });
+    if (key.status === "ACTIVE") {
+      const pending = await tx.keyReplacementRequest.findFirst({ where: { currentKeyId: keyId, status: "PENDING" } });
+      if (pending) throw new Error("Une demande de remplacement est déjà en attente pour cette clé.");
+
+      created = await rotateAccessKey(tx, {
+        currentKeyId: keyId,
+        userId: key.userId,
+        currentSecretHash: key.secretHash,
+        secret: trimmed,
+      });
+      reason = "Remplacement initié par un administrateur.";
+      origin = "ADMIN";
+    } else if (key.status === "REVOKED") {
+      if (hash(trimmed) === key.secretHash) throw new Error("La nouvelle clé doit être différente de l’ancienne.");
+
+      const activeKeys = await tx.accessKey.findMany({ where: { userId: key.userId, status: "ACTIVE" } });
+      revokedActiveKeyIds = activeKeys.map((active) => active.id);
+      if (revokedActiveKeyIds.length) {
+        await tx.accessKey.updateMany({
+          where: { id: { in: revokedActiveKeyIds }, status: "ACTIVE" },
+          data: { status: "REVOKED", revokedAt: new Date() },
+        });
+      }
+
+      created = await createAccessKey(tx, key.userId, trimmed);
+      reason = "Renouvellement d’une clé révoquée par un administrateur.";
+      origin = "ADMIN_REVOKED";
+    } else {
+      throw new Error("Cette clé ne peut pas être remplacée.");
+    }
+
     const replacement = await tx.keyReplacementRequest.create({
       data: {
-        userId: currentKey.userId,
+        userId: key.userId,
         currentKeyId: keyId,
         newKeyId: created.id,
-        reason: "Remplacement initié par un administrateur.",
+        reason,
         status: "COMPLETED",
         decidedByDiscordId: actorDiscordId,
         decidedAt: new Date(),
@@ -157,13 +189,13 @@ export async function replaceActiveKey(keyId: string, secret: string, actorDisco
       data: {
         event: "ACCESS_KEY_REPLACED",
         actorDiscordId,
-        targetDiscordId: currentKey.user.discordId,
+        targetDiscordId: key.user.discordId,
         keyId: created.id,
         replacementRequestId: replacement.id,
-        metadata: JSON.stringify({ previousKeyId: keyId, origin: "ADMIN" }),
+        metadata: JSON.stringify({ previousKeyId: keyId, revokedActiveKeyIds, origin }),
       },
     });
-    return { created, user: currentKey.user, replacementId: replacement.id };
+    return { created, user: key.user, replacementId: replacement.id };
   });
 
   await queueNotification({

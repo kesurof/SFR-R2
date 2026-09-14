@@ -34,8 +34,10 @@ La vue des clés rattache désormais chaque demande à la clé qu'elle concerne 
 - La contrainte d'unicité sur `newKeyId` garantit qu'une clé n'est le résultat que
   d'un seul remplacement.
 - Les demandes complétées avant la migration n'ont pas de `newKeyId`. Le rattachement
-  retombe alors sur la clé ciblée, qui porte la trace « Traitée » ; leur historique
-  reste par ailleurs dans les audits.
+  retombe alors sur la clé ciblée, qui porte la trace « Traitée ». Une migration de
+  données (`202609140002`) renseigne ensuite `newKeyId` depuis
+  `AuditLog.ACCESS_KEY_REPLACED`, pour replacer la trace et le lien du DM sur la clé
+  effectivement créée.
 - La vue charge, pour les clés affichées, la demande la plus récente tous statuts
   confondus, afin que la colonne reste lisible après un refus comme après un
   remplacement.

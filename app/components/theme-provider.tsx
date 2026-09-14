@@ -46,6 +46,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Aligne la couleur de la barre du navigateur mobile sur le thème applicatif.
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", mode === "dark" ? "#141414" : "#ffffff");
+  }, [mode]);
+
   const toggle = useCallback(() => setMode(mode === "dark" ? "light" : "dark"), [mode, setMode]);
 
   const value = useMemo(() => ({ mode, setMode, toggle }), [mode, setMode, toggle]);

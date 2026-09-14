@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import localFont from "next/font/local";
@@ -35,6 +35,16 @@ const display = localFont({
 export const metadata: Metadata = {
   title: "StreamFusion Reborn — Accès privé",
   description: "Portail privé de parrainage et de récupération de clé R2.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#141414" },
+  ],
 };
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('sfr-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;

@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button, Card, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
+import { Button, Card, Input, Select, Space, Table, Tag, Typography, theme as antdTheme, type TableColumnsType } from "antd";
 import { KeyActions } from "@/app/admin/key-actions";
+import { MobileCardField } from "@/app/components/mobile-card-field";
 import { MobileCardList } from "@/app/components/mobile-card-list";
 import { useIsMobile } from "@/app/components/use-is-mobile";
 import { usePersistentState } from "@/app/components/use-persistent-state";
@@ -46,12 +47,12 @@ function MemberLabel({ row }: { row: KeyRow }) {
   );
 }
 
-function ReplacementSummary({ replacement }: { replacement: KeyRow["replacementRequest"] }) {
+function ReplacementSummary({ replacement, minWidth = 220 }: { replacement: KeyRow["replacementRequest"]; minWidth?: number }) {
   if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
   const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
   const color = replacement.status === "COMPLETED" ? "green" : replacement.status === "REJECTED" ? "red" : undefined;
   return (
-    <Space direction="vertical" size={4} style={{ minWidth: 220 }} id={`replacement-${replacement.id}`}>
+    <Space direction="vertical" size={4} style={{ minWidth }} id={`replacement-${replacement.id}`}>
       <Space size={4}>
         <Tag color={color}>{label}</Tag>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -77,6 +78,7 @@ function ReplacementSummary({ replacement }: { replacement: KeyRow["replacementR
 
 export function KeysTable({ rows }: { rows: KeyRow[] }) {
   const isMobile = useIsMobile();
+  const { token } = antdTheme.useToken();
   const [filters, setFilters] = usePersistentState<KeyTableFilters>("sfr:keys-filters-v1", DEFAULT_KEY_FILTERS);
   const patch = (next: Partial<KeyTableFilters>) => setFilters((previous) => ({ ...previous, ...next }));
   const visibleRows = useMemo(() => rows.filter((row) => matchesKeyFilters(row, filters)), [rows, filters]);
@@ -111,7 +113,7 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
   ];
 
   const filtersBar = (
-    <Space wrap style={{ marginBottom: 12 }}>
+    <Space wrap className="sfr-filters" style={{ marginBottom: 12 }}>
       <Input
         type="search"
         aria-label="Rechercher une clé"
@@ -147,21 +149,43 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
           renderItem={(row) => (
             <Card
               size="small"
-              style={{ width: "100%" }}
-              title={<MemberLabel row={row} />}
+              style={{
+                width: "100%",
+                borderInlineStart: `3px solid ${row.status === "ACTIVE" ? token.colorSuccess : token.colorError}`,
+              }}
+              title={
+                <>
+                  <strong>{row.member}</strong>
+                  <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>
+                    Parrainé par {row.sponsor}
+                  </Typography.Text>
+                </>
+              }
               extra={<Tag color={row.status === "ACTIVE" ? "green" : "red"}>{row.status === "ACTIVE" ? "Active" : "Révoquée"}</Tag>}
             >
-              <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                <Typography.Text code>{row.fingerprint}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Émise le {new Date(row.createdAt).toLocaleDateString("fr-FR")}
-                  {row.revokedAt ? ` · révoquée le ${new Date(row.revokedAt).toLocaleDateString("fr-FR")}` : ""}
-                </Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Parrainé par {row.sponsor}
-                </Typography.Text>
-                <ReplacementSummary replacement={row.replacementRequest} />
-                <div style={{ marginTop: 4 }}>
+              <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                <MobileCardField label="Empreinte">
+                  <Typography.Text code>{row.fingerprint}</Typography.Text>
+                </MobileCardField>
+                <MobileCardField label="Émise">
+                  <Typography.Text type="secondary">{new Date(row.createdAt).toLocaleDateString("fr-FR")}</Typography.Text>
+                </MobileCardField>
+                {row.revokedAt && (
+                  <MobileCardField label="Révoquée">
+                    <Typography.Text type="secondary">{new Date(row.revokedAt).toLocaleDateString("fr-FR")}</Typography.Text>
+                  </MobileCardField>
+                )}
+                {row.replacementRequest && (
+                  <div>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Remplacement
+                    </Typography.Text>
+                    <div style={{ marginTop: 4 }}>
+                      <ReplacementSummary replacement={row.replacementRequest} minWidth={0} />
+                    </div>
+                  </div>
+                )}
+                <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
                   <KeyActions row={row} />
                 </div>
               </Space>

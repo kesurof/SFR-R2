@@ -177,7 +177,7 @@ export function AccessRequestTable({
   ];
 
   const filtersBar = (
-    <Space wrap style={{ marginBottom: 12 }}>
+    <Space wrap className="sfr-filters" style={{ marginBottom: 12 }}>
       <Input
         type="search"
         aria-label="Rechercher une demande d’accès"

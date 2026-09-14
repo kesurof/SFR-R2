@@ -116,6 +116,7 @@ export function AppShell({
         justifyContent: "space-between",
         gap: 12,
         padding: 16,
+        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
         borderTop: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
@@ -140,7 +141,14 @@ export function AppShell({
           trigger={null}
           theme={mode}
           width={248}
-          style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
+          style={{
+            position: "sticky",
+            top: 0,
+            alignSelf: "flex-start",
+            height: "100vh",
+            overflowY: "auto",
+            borderInlineEnd: `1px solid ${token.colorBorderSecondary}`,
+          }}
         >
           {brand(!collapsed)}
           {navigation}
@@ -150,6 +158,9 @@ export function AppShell({
       <Layout>
         <Header
           style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
             display: "flex",
             alignItems: "center",
             gap: 12,

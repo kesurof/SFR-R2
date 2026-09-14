@@ -26,11 +26,20 @@ Adopter une adaptation strictement conditionnée au breakpoint `lg` (992 px) :
   une API dépréciée.
 - Les `Modal` et `Drawer` de détail adoptent une largeur adaptée à l'écran.
 - Les actions de soumission passent en pleine largeur via la classe `.sfr-action`.
+- L'en-tête devient `sticky` sur les deux breakpoints et le `Sider` desktop devient
+  collant (`position: sticky`, défilement interne). C'est la seule évolution
+  volontaire du desktop, motivée par la navigation qui disparaissait au défilement.
+- Annexes mobiles : filtres collants sous l'en-tête, champs de saisie à 16 px pour
+  éviter le zoom iOS, zones sûres (`viewport-fit=cover`, `env(safe-area-inset-*)`) et
+  `theme-color` aligné sur le thème applicatif.
+- Les cartes clés et utilisateurs adoptent une présentation homogène via
+  `MobileCardField` (libellé/valeur), un liseré de statut et un pied d'actions.
 
 ## Conséquences
 
-- Aucune branche desktop n'est modifiée : les tables, colonnes, filtres et actions
-  restent identiques au-dessus de `lg`.
+- Les tables, colonnes, filtres et actions desktop restent identiques au-dessus de
+  `lg` ; la seule évolution desktop volontaire est la navigation fixe (en-tête et
+  `Sider`), validée par l'usage.
 - Le desktop ne subit aucun « flash » mobile ; sur mobile, un bref rendu desktop peut
   précéder la bascule, compensé par le montage immédiat du hook.
 - Chaque table convertie possède une branche mobile dédiée, ce qui ajoute du markup

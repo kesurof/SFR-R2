@@ -14,6 +14,7 @@ html {
 
 body {
   margin: 0;
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--ant-color-bg-layout);
   color: var(--ant-color-text);
   font: 15px/1.55 var(--font, "IBM Plex Sans"), ui-sans-serif, system-ui, sans-serif;
@@ -122,5 +123,23 @@ img {
 @media (max-width: 991.98px) {
   .sfr-action {
     width: 100%;
+  }
+
+  /* Filtres collants sous l'en-tête fixe (hauteur 64px). */
+  .sfr-filters {
+    position: sticky;
+    top: 64px;
+    z-index: 10;
+    padding-block: 8px;
+    background: var(--ant-color-bg-layout);
+  }
+
+  /* Anti-zoom iOS : les champs de saisie restent à 16px minimum au focus. */
+  .ant-input,
+  .ant-input-affix-wrapper input,
+  .ant-select-selector,
+  .ant-select-selection-search-input,
+  .ant-input-password input {
+    font-size: 16px;
   }
 }

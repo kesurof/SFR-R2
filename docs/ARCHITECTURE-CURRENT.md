@@ -23,12 +23,15 @@ Les frontières principales sont les suivantes :
 - Docker démarre le serveur Next.js après avoir appliqué les migrations au volume
   SQLite persistant `/data`.
 
-L'interface est responsive. Au-dessus du breakpoint `lg` (992 px), la navigation
-reste dans un `Sider` et les listes sont des `Table` Ant Design. En dessous, la
-navigation passe dans un `Drawer` latéral et les tables sont rendues en cartes
-empilées (`useIsMobile` + `MobileCardList`), avec des filtres pleine largeur et des
-overlays (`Modal`, `Drawer`) ajustés à la largeur de l'écran. Le rendu desktop n'est
-pas modifié par cette adaptation.
+L'interface est responsive. L'en-tête et le `Sider` desktop restent fixes pendant le
+défilement (le `Sider` défile en interne si besoin). Au-dessus du breakpoint `lg`
+(992 px), la navigation reste dans un `Sider` et les listes sont des `Table` Ant
+Design. En dessous, la navigation passe dans un `Drawer` latéral et les tables sont
+rendues en cartes empilées (`useIsMobile` + `MobileCardList` + `MobileCardField`),
+avec des filtres collants sous l'en-tête, des overlays (`Modal`, `Drawer`) ajustés à
+la largeur de l'écran, des champs à 16 px pour éviter le zoom iOS et une prise en
+compte des zones sûres (`viewport-fit=cover`, `env(safe-area-inset-*)`) et de
+`theme-color`. Le rendu desktop n'est pas modifié par cette adaptation.
 
 ## Accès et rôles
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Button, Card, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
+import { Avatar, Button, Card, Input, Select, Space, Table, Tag, Typography, theme as antdTheme, type TableColumnsType } from "antd";
 import { setAccessApprover, setSponsor } from "@/app/actions";
 import { buildDiscordUserColumns } from "@/app/components/discord-user-columns";
+import { MobileCardField } from "@/app/components/mobile-card-field";
 import { MobileCardList } from "@/app/components/mobile-card-list";
 import { useIsMobile } from "@/app/components/use-is-mobile";
 import { usePersistentState } from "@/app/components/use-persistent-state";
@@ -51,6 +52,7 @@ export function UserTable({ users }: { users: User[] }) {
   const patch = (next: Partial<typeof f>) => setF((previous) => ({ ...previous, ...next }));
   const allRoles = useMemo(() => collectDiscordRoles(users), [users]);
   const isMobile = useIsMobile();
+  const { token } = antdTheme.useToken();
 
   useEffect(() => {
     if (f.role && f.role !== "__none" && !allRoles.includes(f.role)) patch({ role: "" });
@@ -90,7 +92,7 @@ export function UserTable({ users }: { users: User[] }) {
   ];
 
   const filtersBar = (
-    <Space wrap style={{ marginBottom: 12 }}>
+    <Space wrap className="sfr-filters" style={{ marginBottom: 12 }}>
       <Input
         type="search"
         aria-label="Recherche globale"
@@ -147,36 +149,54 @@ export function UserTable({ users }: { users: User[] }) {
           emptyText="Aucun utilisateur ne correspond aux filtres."
           renderItem={(user) => {
             const roles = parseDiscordRoles(user.discordRoles);
+            const displayName = user.serverNickname || user.username;
             return (
               <Card
                 size="small"
                 style={{ width: "100%" }}
-                title={<strong>{user.serverNickname || user.username}</strong>}
+                title={
+                  <Space size={8}>
+                    <Avatar size={28} style={{ background: token.colorPrimary }}>
+                      {displayName.charAt(0).toLocaleUpperCase()}
+                    </Avatar>
+                    <strong>{displayName}</strong>
+                  </Space>
+                }
                 extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{user.username}</Typography.Text>}
               >
-                <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                  <Typography.Text type="secondary" code>
-                    {user.discordId}
-                  </Typography.Text>
-                  {roles.length > 0 && (
-                    <Space size={4} wrap>
-                      {roles.map((role) => (
-                        <Tag key={role}>{role}</Tag>
-                      ))}
+                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                  <MobileCardField label="Discord ID">
+                    <Typography.Text code>{user.discordId}</Typography.Text>
+                  </MobileCardField>
+                  <MobileCardField label="Rôles" align="left">
+                    {roles.length ? (
+                      <Space size={4} wrap>
+                        {roles.map((role) => (
+                          <Tag key={role}>{role}</Tag>
+                        ))}
+                      </Space>
+                    ) : (
+                      <Typography.Text type="secondary">—</Typography.Text>
+                    )}
+                  </MobileCardField>
+                  <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
+                    <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <Space size={6}>
+                          <Typography.Text>Parrainage</Typography.Text>
+                          <Tag color={user.sponsorPermission ? "green" : "default"}>{user.sponsorPermission ? "Autorisé" : "Non autorisé"}</Tag>
+                        </Space>
+                        <PermissionForm discordId={user.discordId} action={setSponsor} granted={!!user.sponsorPermission} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <Space size={6}>
+                          <Typography.Text>Approbation</Typography.Text>
+                          <Tag color={user.accessApproverPermission ? "green" : "default"}>{user.accessApproverPermission ? "Autorisé" : "Non autorisé"}</Tag>
+                        </Space>
+                        <PermissionForm discordId={user.discordId} action={setAccessApprover} granted={!!user.accessApproverPermission} />
+                      </div>
                     </Space>
-                  )}
-                  <Space size={8} wrap>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      Parrainage :
-                    </Typography.Text>
-                    <PermissionForm discordId={user.discordId} action={setSponsor} granted={!!user.sponsorPermission} />
-                  </Space>
-                  <Space size={8} wrap>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      Approbation :
-                    </Typography.Text>
-                    <PermissionForm discordId={user.discordId} action={setAccessApprover} granted={!!user.accessApproverPermission} />
-                  </Space>
+                  </div>
                 </Space>
               </Card>
             );

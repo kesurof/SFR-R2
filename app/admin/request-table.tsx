@@ -1,9 +1,11 @@
 "use client";
 import { useMemo } from "react";
-import { Button, Input, Select, Space, Table, Typography, type TableColumnsType } from "antd";
+import { Button, Card, Input, Select, Space, Table, Typography, type TableColumnsType } from "antd";
 import { archiveRequest, decide, deleteRequest, storeKey } from "@/app/actions";
 import { StatusBadge } from "@/app/components/status-badge";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
+import { MobileCardList } from "@/app/components/mobile-card-list";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import { RequestDetails, type RequestDetailsData } from "@/app/admin/request-details";
 import { RejectDialog } from "@/app/admin/reject-dialog";
@@ -31,9 +33,63 @@ type RequestRow = {
   createdAt: string;
 } & RequestDetailsData;
 
+function RequestActions({ row }: { row: RequestRow }) {
+  return (
+    <Space size={4} wrap style={{ width: "100%" }}>
+      <RequestDetails request={row} />
+      {row.status === "PENDING" && (
+        <>
+          <form action={decide}>
+            <input type="hidden" name="requestId" value={row.id} />
+            <Button type="primary" size="small" htmlType="submit" name="decision" value="approve">
+              Accepter
+            </Button>
+          </form>
+          <RejectDialog requestId={row.id} />
+        </>
+      )}
+      {row.status === "APPROVED" && (
+        <form action={storeKey} style={{ display: "flex", gap: 4, width: "100%" }}>
+          <input type="hidden" name="requestId" value={row.id} />
+          <Input.Password
+            name="secret"
+            placeholder="Clé à remettre"
+            required
+            autoComplete="off"
+            size="small"
+            style={{ flex: 1, minWidth: 120 }}
+          />
+          <Button type="primary" size="small" htmlType="submit">
+            Enregistrer
+          </Button>
+        </form>
+      )}
+      {row.status !== "ARCHIVED" && row.status !== "KEY_READY" && (
+        <form action={archiveRequest}>
+          <input type="hidden" name="requestId" value={row.id} />
+          <Button size="small" htmlType="submit">
+            Archiver
+          </Button>
+        </form>
+      )}
+      <form action={deleteRequest}>
+        <input type="hidden" name="requestId" value={row.id} />
+        <ConfirmSubmit
+          title="Supprimer cette demande ?"
+          message="La demande et son historique seront définitivement effacés."
+          confirmLabel="Supprimer"
+        >
+          Supprimer
+        </ConfirmSubmit>
+      </form>
+    </Space>
+  );
+}
+
 export function RequestTable({ requests }: { requests: RequestRow[] }) {
   const [f, setF] = usePersistentState("sfr:admin:requests-filters-v2", DEFAULT_FILTERS);
   const patch = (p: Partial<typeof f>) => setF((prev) => ({ ...prev, ...p }));
+  const isMobile = useIsMobile();
 
   const rows = useMemo(() => {
     const q = f.query.trim().toLocaleLowerCase();
@@ -85,81 +141,65 @@ export function RequestTable({ requests }: { requests: RequestRow[] }) {
     {
       title: "Actions",
       key: "actions",
-      render: (_, row) => (
-        <Space size={4} wrap>
-          <RequestDetails request={row} />
-          {row.status === "PENDING" && (
-            <>
-              <form action={decide}>
-                <input type="hidden" name="requestId" value={row.id} />
-                <Button type="primary" size="small" htmlType="submit" name="decision" value="approve">
-                  Accepter
-                </Button>
-              </form>
-              <RejectDialog requestId={row.id} />
-            </>
-          )}
-          {row.status === "APPROVED" && (
-            <form action={storeKey} style={{ display: "flex", gap: 4 }}>
-              <input type="hidden" name="requestId" value={row.id} />
-              <Input.Password
-                name="secret"
-                placeholder="Clé à remettre"
-                required
-                autoComplete="off"
-                size="small"
-                style={{ width: 150 }}
-              />
-              <Button type="primary" size="small" htmlType="submit">
-                Enregistrer
-              </Button>
-            </form>
-          )}
-          {row.status !== "ARCHIVED" && row.status !== "KEY_READY" && (
-            <form action={archiveRequest}>
-              <input type="hidden" name="requestId" value={row.id} />
-              <Button size="small" htmlType="submit">
-                Archiver
-              </Button>
-            </form>
-          )}
-          <form action={deleteRequest}>
-            <input type="hidden" name="requestId" value={row.id} />
-            <ConfirmSubmit
-              title="Supprimer cette demande ?"
-              message="La demande et son historique seront définitivement effacés."
-              confirmLabel="Supprimer"
-            >
-              Supprimer
-            </ConfirmSubmit>
-          </form>
-        </Space>
-      ),
+      render: (_, row) => <RequestActions row={row} />,
     },
   ];
 
+  const filtersBar = (
+    <Space wrap style={{ marginBottom: 12 }}>
+      <Input
+        type="search"
+        aria-label="Rechercher une demande"
+        placeholder="Rechercher un filleul, parrain ou ID…"
+        value={f.query}
+        onChange={(e) => patch({ query: e.target.value })}
+        style={{ width: isMobile ? "100%" : 280 }}
+      />
+      <Select
+        aria-label="Filtrer par statut"
+        value={f.status}
+        onChange={(value) => patch({ status: value })}
+        options={STATUS_OPTIONS}
+        style={{ width: isMobile ? "100%" : 180 }}
+      />
+      <Typography.Text type="secondary">
+        {rows.length}/{requests.length}
+      </Typography.Text>
+    </Space>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {filtersBar}
+        <MobileCardList
+          items={rows}
+          rowKey={(row) => row.id}
+          emptyText="Aucune demande correspondante."
+          renderItem={(row) => (
+            <Card size="small" style={{ width: "100%" }} title={<strong>{row.referredName}</strong>} extra={<StatusBadge status={row.status} />}>
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {row.referredId}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Parrain : {row.sponsorName} · {row.relationship} ({row.knownSince})
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Créée le {new Date(row.createdAt).toLocaleDateString("fr-FR")}
+                </Typography.Text>
+                <RequestActions row={row} />
+              </Space>
+            </Card>
+          )}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Input
-          type="search"
-          aria-label="Rechercher une demande"
-          placeholder="Rechercher un filleul, parrain ou ID…"
-          value={f.query}
-          onChange={(e) => patch({ query: e.target.value })}
-          style={{ width: 280 }}
-        />
-        <Select
-          aria-label="Filtrer par statut"
-          value={f.status}
-          onChange={(value) => patch({ status: value })}
-          options={STATUS_OPTIONS}
-          style={{ width: 180 }}
-        />
-        <Typography.Text type="secondary">
-          {rows.length}/{requests.length}
-        </Typography.Text>
-      </Space>
+      {filtersBar}
       <Table<RequestRow>
         rowKey="id"
         columns={columns}

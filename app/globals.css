@@ -115,3 +115,12 @@ img {
   gap: 8px;
   justify-content: center;
 }
+
+/* ================= Adaptation mobile ================= */
+/* Sous le breakpoint lg, les actions principales occupent toute la largeur.
+   Le desktop n'est jamais concerné. */
+@media (max-width: 991.98px) {
+  .sfr-action {
+    width: 100%;
+  }
+}

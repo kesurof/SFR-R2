@@ -3,6 +3,7 @@
 import { Button, Input, Modal } from "antd";
 import { replaceKeyByIdAction } from "@/app/actions";
 import { ANTI_AUTOFILL_PROPS } from "@/app/components/anti-autofill";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 type ReplaceAction = (data: FormData) => void | Promise<void>;
 
@@ -30,8 +31,9 @@ export function ReplaceKeyDialog({
   confirmLabel?: string;
   placeholder?: string;
 }) {
+  const isMobile = useIsMobile();
   return (
-    <Modal title={title} open={open} onCancel={onClose} footer={null} destroyOnHidden>
+    <Modal title={title} open={open} onCancel={onClose} footer={null} destroyOnHidden width={isMobile ? "calc(100vw - 24px)" : 520}>
       <form action={action} onSubmit={onClose} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <input type="hidden" name={idField} value={idValue} />
         <label style={{ display: "grid", gap: 4 }}>

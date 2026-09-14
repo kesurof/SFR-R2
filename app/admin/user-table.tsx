@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Button, Input, Select, Space, Table, Typography, type TableColumnsType } from "antd";
+import { Button, Card, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
 import { setAccessApprover, setSponsor } from "@/app/actions";
 import { buildDiscordUserColumns } from "@/app/components/discord-user-columns";
+import { MobileCardList } from "@/app/components/mobile-card-list";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import {
   collectDiscordRoles,
@@ -25,10 +27,30 @@ const PERMISSION_OPTIONS = [
   { value: "no", label: "Non autorisé" },
 ];
 
+function PermissionForm({
+  discordId,
+  action,
+  granted,
+}: {
+  discordId: string;
+  action: (data: FormData) => void | Promise<void>;
+  granted: boolean;
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="discordId" value={discordId} />
+      <Button size="small" type={granted ? "default" : "primary"} name="action" value={granted ? "revoke" : "grant"} htmlType="submit">
+        {granted ? "Retirer" : "Autoriser"}
+      </Button>
+    </form>
+  );
+}
+
 export function UserTable({ users }: { users: User[] }) {
   const [f, setF] = usePersistentState("sfr:admin:users-filters-v2", DEFAULT_FILTERS);
   const patch = (next: Partial<typeof f>) => setF((previous) => ({ ...previous, ...next }));
   const allRoles = useMemo(() => collectDiscordRoles(users), [users]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (f.role && f.role !== "__none" && !allRoles.includes(f.role)) patch({ role: "" });
@@ -56,88 +78,117 @@ export function UserTable({ users }: { users: User[] }) {
     {
       title: "Parrainage",
       key: "sponsor",
-      render: (_, user) => (
-        <form action={setSponsor}>
-          <input type="hidden" name="discordId" value={user.discordId} />
-          <Button
-            size="small"
-            type={user.sponsorPermission ? "default" : "primary"}
-            name="action"
-            value={user.sponsorPermission ? "revoke" : "grant"}
-            htmlType="submit"
-          >
-            {user.sponsorPermission ? "Retirer" : "Autoriser"}
-          </Button>
-        </form>
-      ),
+      render: (_, user) => <PermissionForm discordId={user.discordId} action={setSponsor} granted={!!user.sponsorPermission} />,
     },
     {
       title: "Approbation",
       key: "approval",
       sorter: (a, b) =>
         (a.accessApproverPermission ? 1 : 0) - (b.accessApproverPermission ? 1 : 0),
-      render: (_, user) => (
-        <form action={setAccessApprover}>
-          <input type="hidden" name="discordId" value={user.discordId} />
-          <Button
-            size="small"
-            type={user.accessApproverPermission ? "default" : "primary"}
-            name="action"
-            value={user.accessApproverPermission ? "revoke" : "grant"}
-            htmlType="submit"
-          >
-            {user.accessApproverPermission ? "Retirer" : "Autoriser"}
-          </Button>
-        </form>
-      ),
+      render: (_, user) => <PermissionForm discordId={user.discordId} action={setAccessApprover} granted={!!user.accessApproverPermission} />,
     },
   ];
 
+  const filtersBar = (
+    <Space wrap style={{ marginBottom: 12 }}>
+      <Input
+        type="search"
+        aria-label="Recherche globale"
+        placeholder="Recherche globale…"
+        value={f.global}
+        onChange={(event) => patch({ global: event.target.value })}
+        style={{ width: isMobile ? "100%" : 240 }}
+      />
+      <Select
+        aria-label="Filtrer par rôle"
+        value={f.role}
+        onChange={(value) => patch({ role: value })}
+        style={{ width: isMobile ? "100%" : 180 }}
+        options={[
+          { value: "", label: "Tous les rôles" },
+          ...allRoles.map((role) => ({ value: role, label: role })),
+          { value: "__none", label: "Sans rôle" },
+        ]}
+      />
+      <Select
+        aria-label="Filtrer par parrainage"
+        placeholder="Parrainage"
+        allowClear
+        value={f.sponsor || undefined}
+        onChange={(value) => patch({ sponsor: value ?? "" })}
+        style={{ width: isMobile ? "100%" : 170 }}
+        options={PERMISSION_OPTIONS}
+      />
+      <Select
+        aria-label="Filtrer par approbation"
+        placeholder="Approbation"
+        allowClear
+        value={f.approval || undefined}
+        onChange={(value) => patch({ approval: value ?? "" })}
+        style={{ width: isMobile ? "100%" : 190 }}
+        options={PERMISSION_OPTIONS}
+      />
+      <Button onClick={() => setF({ ...DEFAULT_FILTERS })} className="sfr-action">
+        Réinitialiser les filtres
+      </Button>
+      <Typography.Text type="secondary">
+        {rows.length}/{users.length}
+      </Typography.Text>
+    </Space>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {filtersBar}
+        <MobileCardList
+          items={rows}
+          rowKey={(user) => user.id}
+          emptyText="Aucun utilisateur ne correspond aux filtres."
+          renderItem={(user) => {
+            const roles = parseDiscordRoles(user.discordRoles);
+            return (
+              <Card
+                size="small"
+                style={{ width: "100%" }}
+                title={<strong>{user.serverNickname || user.username}</strong>}
+                extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{user.username}</Typography.Text>}
+              >
+                <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                  <Typography.Text type="secondary" code>
+                    {user.discordId}
+                  </Typography.Text>
+                  {roles.length > 0 && (
+                    <Space size={4} wrap>
+                      {roles.map((role) => (
+                        <Tag key={role}>{role}</Tag>
+                      ))}
+                    </Space>
+                  )}
+                  <Space size={8} wrap>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Parrainage :
+                    </Typography.Text>
+                    <PermissionForm discordId={user.discordId} action={setSponsor} granted={!!user.sponsorPermission} />
+                  </Space>
+                  <Space size={8} wrap>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Approbation :
+                    </Typography.Text>
+                    <PermissionForm discordId={user.discordId} action={setAccessApprover} granted={!!user.accessApproverPermission} />
+                  </Space>
+                </Space>
+              </Card>
+            );
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Input
-          type="search"
-          aria-label="Recherche globale"
-          placeholder="Recherche globale…"
-          value={f.global}
-          onChange={(event) => patch({ global: event.target.value })}
-          style={{ width: 240 }}
-        />
-        <Select
-          aria-label="Filtrer par rôle"
-          value={f.role}
-          onChange={(value) => patch({ role: value })}
-          style={{ width: 180 }}
-          options={[
-            { value: "", label: "Tous les rôles" },
-            ...allRoles.map((role) => ({ value: role, label: role })),
-            { value: "__none", label: "Sans rôle" },
-          ]}
-        />
-        <Select
-          aria-label="Filtrer par parrainage"
-          placeholder="Parrainage"
-          allowClear
-          value={f.sponsor || undefined}
-          onChange={(value) => patch({ sponsor: value ?? "" })}
-          style={{ width: 170 }}
-          options={PERMISSION_OPTIONS}
-        />
-        <Select
-          aria-label="Filtrer par approbation"
-          placeholder="Approbation"
-          allowClear
-          value={f.approval || undefined}
-          onChange={(value) => patch({ approval: value ?? "" })}
-          style={{ width: 190 }}
-          options={PERMISSION_OPTIONS}
-        />
-        <Button onClick={() => setF({ ...DEFAULT_FILTERS })}>Réinitialiser les filtres</Button>
-        <Typography.Text type="secondary">
-          {rows.length}/{users.length}
-        </Typography.Text>
-      </Space>
+      {filtersBar}
       <Table<User>
         rowKey="id"
         columns={columns}

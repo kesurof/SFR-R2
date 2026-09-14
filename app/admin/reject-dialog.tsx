@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { Button, Input, Modal } from "antd";
 import { decide } from "@/app/actions";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 type RejectAction = (data: FormData) => void | Promise<void>;
 
@@ -29,6 +30,7 @@ export function RejectDialog({
   triggerIcon?: ReactNode;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isMobile = useIsMobile();
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = (value: boolean) => {
     setUncontrolledOpen(value);
@@ -41,7 +43,7 @@ export function RejectDialog({
           {triggerLabel}
         </Button>
       )}
-      <Modal title={title} open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden>
+      <Modal title={title} open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden width={isMobile ? "calc(100vw - 24px)" : 520}>
         <form
           action={action}
           onSubmit={() => setOpen(false)}

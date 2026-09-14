@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Descriptions, Drawer, Space, Typography } from "antd";
 import { EyeOutlined } from "@ant-design/icons";
 import { StatusBadge } from "@/app/components/status-badge";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 export function AccessRequestDetails({
   request,
@@ -11,12 +12,13 @@ export function AccessRequestDetails({
   request: { name: string; id: string; status: string; communities: string; motivations: string; selfHosting: string; discovery: string | null };
 }) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   return (
     <>
       <Button size="small" icon={<EyeOutlined />} onClick={() => setOpen(true)}>
         Voir
       </Button>
-      <Drawer title={request.name} open={open} onClose={() => setOpen(false)} width={560} destroyOnHidden>
+      <Drawer title={request.name} open={open} onClose={() => setOpen(false)} width={isMobile ? "100%" : 560} destroyOnHidden>
         <Space direction="vertical" size="middle" style={{ width: "100%" }}>
           <StatusBadge status={request.status} />
 

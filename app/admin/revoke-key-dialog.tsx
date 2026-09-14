@@ -2,11 +2,13 @@
 
 import { Button, Modal, Typography } from "antd";
 import { revoke } from "@/app/actions";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 /** Confirmation contrôlée de la révocation d'une clé active. */
 export function RevokeKeyDialog({ open, onClose, keyId }: { open: boolean; onClose: () => void; keyId: string }) {
+  const isMobile = useIsMobile();
   return (
-    <Modal title="Révoquer cette clé ?" open={open} onCancel={onClose} footer={null} destroyOnHidden>
+    <Modal title="Révoquer cette clé ?" open={open} onCancel={onClose} footer={null} destroyOnHidden width={isMobile ? "calc(100vw - 24px)" : 520}>
       <form action={revoke} onSubmit={onClose} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <input type="hidden" name="keyId" value={keyId} />
         <Typography.Paragraph style={{ marginBottom: 0 }}>

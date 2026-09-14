@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Button, Descriptions, Drawer, List, Space, Typography } from "antd";
 import { EyeOutlined } from "@ant-design/icons";
 import { StatusBadge } from "@/app/components/status-badge";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 type Audit = { event: string; actorDiscordId: string | null; createdAt: string };
 export type RequestDetailsData = {
@@ -19,12 +20,13 @@ const labels: Record<string, string> = { SPONSOR_REQUEST_CREATED: "Demande cr√©√
 
 export function RequestDetails({ request }: { request: RequestDetailsData }) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   return (
     <>
       <Button size="small" icon={<EyeOutlined />} onClick={() => setOpen(true)}>
         Voir
       </Button>
-      <Drawer title={request.referredName} open={open} onClose={() => setOpen(false)} width={560} destroyOnHidden>
+      <Drawer title={request.referredName} open={open} onClose={() => setOpen(false)} width={isMobile ? "100%" : 560} destroyOnHidden>
         <Space direction="vertical" size="middle" style={{ width: "100%" }}>
           <Space>
             {request.status && <StatusBadge status={request.status} />}

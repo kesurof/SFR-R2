@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
+import { Button, Card, Input, Select, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
 import { KeyActions } from "@/app/admin/key-actions";
+import { MobileCardList } from "@/app/components/mobile-card-list";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 import { usePersistentState } from "@/app/components/use-persistent-state";
 import { matchesKeyFilters, type KeyTableFilters } from "@/lib/key-replacement-rules";
 
@@ -33,7 +35,48 @@ export type KeyRow = {
   } | null;
 };
 
+function MemberLabel({ row }: { row: KeyRow }) {
+  return (
+    <>
+      <strong>{row.member}</strong>
+      <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+        {row.discordId}
+      </Typography.Text>
+    </>
+  );
+}
+
+function ReplacementSummary({ replacement }: { replacement: KeyRow["replacementRequest"] }) {
+  if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
+  const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
+  const color = replacement.status === "COMPLETED" ? "green" : replacement.status === "REJECTED" ? "red" : undefined;
+  return (
+    <Space direction="vertical" size={4} style={{ minWidth: 220 }} id={`replacement-${replacement.id}`}>
+      <Space size={4}>
+        <Tag color={color}>{label}</Tag>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          {new Date(replacement.createdAt).toLocaleString("fr-FR")}
+        </Typography.Text>
+      </Space>
+      {replacement.isResult && (
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          Remplace la clé {replacement.previousFingerprint}
+        </Typography.Text>
+      )}
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        {replacement.reason}
+      </Typography.Text>
+      {replacement.status === "REJECTED" && replacement.decisionComment && (
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          Refus : {replacement.decisionComment}
+        </Typography.Text>
+      )}
+    </Space>
+  );
+}
+
 export function KeysTable({ rows }: { rows: KeyRow[] }) {
+  const isMobile = useIsMobile();
   const [filters, setFilters] = usePersistentState<KeyTableFilters>("sfr:keys-filters-v1", DEFAULT_KEY_FILTERS);
   const patch = (next: Partial<KeyTableFilters>) => setFilters((previous) => ({ ...previous, ...next }));
   const visibleRows = useMemo(() => rows.filter((row) => matchesKeyFilters(row, filters)), [rows, filters]);
@@ -42,14 +85,7 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
     {
       title: "Membre",
       key: "member",
-      render: (_, row) => (
-        <>
-          <strong>{row.member}</strong>
-          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
-            {row.discordId}
-          </Typography.Text>
-        </>
-      ),
+      render: (_, row) => <MemberLabel row={row} />,
     },
     {
       title: "Parrainé par",
@@ -62,35 +98,7 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
     {
       title: "Remplacement",
       key: "replacement",
-      render: (_, row) => {
-        const replacement = row.replacementRequest;
-        if (!replacement) return <Typography.Text type="secondary">—</Typography.Text>;
-        const label = replacement.status === "PENDING" ? "À traiter" : replacement.status === "COMPLETED" ? "Traitée" : "Refusée";
-        const color = replacement.status === "COMPLETED" ? "green" : replacement.status === "REJECTED" ? "red" : undefined;
-        return (
-          <Space direction="vertical" size={4} style={{ minWidth: 220 }} id={`replacement-${replacement.id}`}>
-            <Space size={4}>
-              <Tag color={color}>{label}</Tag>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {new Date(replacement.createdAt).toLocaleString("fr-FR")}
-              </Typography.Text>
-            </Space>
-            {replacement.isResult && (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Remplace la clé {replacement.previousFingerprint}
-              </Typography.Text>
-            )}
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {replacement.reason}
-            </Typography.Text>
-            {replacement.status === "REJECTED" && replacement.decisionComment && (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Refus : {replacement.decisionComment}
-              </Typography.Text>
-            )}
-          </Space>
-        );
-      },
+      render: (_, row) => <ReplacementSummary replacement={row.replacementRequest} />,
     },
     {
       title: "Actions",
@@ -102,29 +110,71 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
     },
   ];
 
+  const filtersBar = (
+    <Space wrap style={{ marginBottom: 12 }}>
+      <Input
+        type="search"
+        aria-label="Rechercher une clé"
+        placeholder="Rechercher un membre ou un identifiant…"
+        value={filters.query}
+        onChange={(event) => patch({ query: event.target.value })}
+        style={{ width: isMobile ? "100%" : 300 }}
+      />
+      <Select
+        aria-label="Filtrer par statut"
+        value={filters.status}
+        onChange={(value) => patch({ status: value as KeyTableFilters["status"] })}
+        options={STATUS_FILTER_OPTIONS}
+        style={{ width: isMobile ? "100%" : 180 }}
+      />
+      <Button onClick={() => setFilters({ ...DEFAULT_KEY_FILTERS })} className="sfr-action">
+        Réinitialiser les filtres
+      </Button>
+      <Typography.Text type="secondary">
+        {visibleRows.length}/{rows.length}
+      </Typography.Text>
+    </Space>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {filtersBar}
+        <MobileCardList
+          items={visibleRows}
+          rowKey={(row) => row.id}
+          emptyText="Aucune clé enregistrée."
+          renderItem={(row) => (
+            <Card
+              size="small"
+              style={{ width: "100%" }}
+              title={<MemberLabel row={row} />}
+              extra={<Tag color={row.status === "ACTIVE" ? "green" : "red"}>{row.status === "ACTIVE" ? "Active" : "Révoquée"}</Tag>}
+            >
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                <Typography.Text code>{row.fingerprint}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Émise le {new Date(row.createdAt).toLocaleDateString("fr-FR")}
+                  {row.revokedAt ? ` · révoquée le ${new Date(row.revokedAt).toLocaleDateString("fr-FR")}` : ""}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Parrainé par {row.sponsor}
+                </Typography.Text>
+                <ReplacementSummary replacement={row.replacementRequest} />
+                <div style={{ marginTop: 4 }}>
+                  <KeyActions row={row} />
+                </div>
+              </Space>
+            </Card>
+          )}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Input
-          type="search"
-          aria-label="Rechercher une clé"
-          placeholder="Rechercher un membre ou un identifiant…"
-          value={filters.query}
-          onChange={(event) => patch({ query: event.target.value })}
-          style={{ width: 300 }}
-        />
-        <Select
-          aria-label="Filtrer par statut"
-          value={filters.status}
-          onChange={(value) => patch({ status: value as KeyTableFilters["status"] })}
-          options={STATUS_FILTER_OPTIONS}
-          style={{ width: 180 }}
-        />
-        <Button onClick={() => setFilters({ ...DEFAULT_KEY_FILTERS })}>Réinitialiser les filtres</Button>
-        <Typography.Text type="secondary">
-          {visibleRows.length}/{rows.length}
-        </Typography.Text>
-      </Space>
+      {filtersBar}
       <Table<KeyRow>
         rowKey="id"
         columns={columns}

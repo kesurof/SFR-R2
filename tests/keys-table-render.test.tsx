@@ -2,7 +2,23 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeysTable, type KeyRow } from "../app/admin/keys-table";
 
-afterEach(cleanup);
+function mockMatchMedia(matches: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
+
+afterEach(() => {
+  cleanup();
+  mockMatchMedia(false);
+});
 
 vi.mock("@/app/actions", () => ({
   replaceKeyAction: vi.fn(),
@@ -92,5 +108,15 @@ describe("KeysTable", () => {
     );
 
     expect(screen.getByText("Remplacer")).toBeTruthy();
+  });
+
+  it("affiche des cartes (sans tableau) sur mobile", () => {
+    mockMatchMedia(true);
+    render(<KeysTable rows={[baseRow]} />);
+
+    expect(screen.getByText("Membre test")).toBeTruthy();
+    expect(screen.getByText((_, element) => element?.tagName === "SPAN" && element.textContent === "Parrainé par Équipe")).toBeTruthy();
+    expect(document.querySelector(".ant-table")).toBeNull();
+    expect(document.querySelector(".ant-card")).toBeTruthy();
   });
 });

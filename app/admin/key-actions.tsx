@@ -8,6 +8,7 @@ import { DeleteKeyDialog } from "@/app/admin/delete-key-dialog";
 import { ReplaceKeyDialog } from "@/app/admin/replace-key-dialog";
 import { RejectDialog } from "@/app/admin/reject-dialog";
 import { RevokeKeyDialog } from "@/app/admin/revoke-key-dialog";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 import type { KeyRow } from "@/app/admin/keys-table";
 
 type DialogKind = "replace" | "revoke" | "reject" | "delete" | null;
@@ -15,6 +16,8 @@ type DialogKind = "replace" | "revoke" | "reject" | "delete" | null;
 /** Action principale + menu d'actions d'une ligne de clé (administration). */
 export function KeyActions({ row }: { row: KeyRow }) {
   const [dialog, setDialog] = useState<DialogKind>(null);
+  const isMobile = useIsMobile();
+  const size = isMobile ? "middle" : "small";
   const replacement = row.replacementRequest;
   const pending = replacement?.status === "PENDING" && !replacement.isResult;
   const replaceable = row.status === "ACTIVE" || row.status === "REVOKED";
@@ -32,7 +35,7 @@ export function KeyActions({ row }: { row: KeyRow }) {
       {replaceable && (
         <Button
           type="primary"
-          size="small"
+          size={size}
           icon={<SwapOutlined />}
           title={pending ? "Traiter la demande de remplacement" : "Remplacer la clé"}
           onClick={() => setDialog("replace")}
@@ -41,7 +44,7 @@ export function KeyActions({ row }: { row: KeyRow }) {
         </Button>
       )}
       <Dropdown menu={{ items, onClick: ({ key }) => setDialog(key as DialogKind) }} trigger={["click"]}>
-        <Button size="small" icon={<MoreOutlined />} aria-label="Plus d'actions" title="Plus d'actions" />
+        <Button size={size} icon={<MoreOutlined />} aria-label="Plus d'actions" title="Plus d'actions" />
       </Dropdown>
 
       <ReplaceKeyDialog

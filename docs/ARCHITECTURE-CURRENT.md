@@ -23,6 +23,13 @@ Les frontières principales sont les suivantes :
 - Docker démarre le serveur Next.js après avoir appliqué les migrations au volume
   SQLite persistant `/data`.
 
+L'interface est responsive. Au-dessus du breakpoint `lg` (992 px), la navigation
+reste dans un `Sider` et les listes sont des `Table` Ant Design. En dessous, la
+navigation passe dans un `Drawer` latéral et les tables sont rendues en cartes
+empilées (`useIsMobile` + `MobileCardList`), avec des filtres pleine largeur et des
+overlays (`Modal`, `Drawer`) ajustés à la largeur de l'écran. Le rendu desktop n'est
+pas modifié par cette adaptation.
+
 ## Accès et rôles
 
 La connexion Discord utilise le scope `identify guilds`. L'identifiant Discord

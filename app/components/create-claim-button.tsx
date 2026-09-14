@@ -37,15 +37,17 @@ export function CreateClaimButton() {
     return (
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Alert type="success" showIcon icon={<CheckCircleOutlined />} message="Ton lien personnel est prêt." />
-        <Link href={`/claim/${token}`}>
-          <Button type="primary">Afficher ma clé</Button>
+        <Link href={`/claim/${token}`} style={{ display: "block" }}>
+          <Button type="primary" className="sfr-action">
+            Afficher ma clé
+          </Button>
         </Link>
       </Space>
     );
   }
 
   return (
-    <Button type="primary" loading={busy} onClick={create}>
+    <Button type="primary" loading={busy} onClick={create} className="sfr-action">
       Créer mon lien pour récupérer ma clé
     </Button>
   );

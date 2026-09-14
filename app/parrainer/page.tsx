@@ -86,7 +86,7 @@ export default async function SponsorPage() {
             <Checkbox name="attestationAccepted" value="true">
               Je confirme connaître cette personne et j&apos;assume cette recommandation.
             </Checkbox>
-            <PendingButton pendingLabel="Envoi…">Envoyer la demande</PendingButton>
+            <PendingButton pendingLabel="Envoi…" className="sfr-action">Envoyer la demande</PendingButton>
           </div>
         </form>
       </Card>

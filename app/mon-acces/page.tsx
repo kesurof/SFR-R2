@@ -57,7 +57,7 @@ export default async function AccessPage() {
         </Paragraph>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16, alignItems: "start" }}>
         <Card title="Statut du compte">
           <Steps
             direction="vertical"
@@ -92,7 +92,7 @@ export default async function AccessPage() {
                         <FormField label="Motif du remplacement" hint="500 caractères maximum.">
                           <TextArea name="reason" required maxLength={500} rows={3} placeholder="Décris brièvement le problème rencontré avec ta clé…" />
                         </FormField>
-                        <PendingButton pendingLabel="Envoi…">Demander le remplacement</PendingButton>
+                        <PendingButton pendingLabel="Envoi…" className="sfr-action">Demander le remplacement</PendingButton>
                       </Space>
                     </form>
                   </>

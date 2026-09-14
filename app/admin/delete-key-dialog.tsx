@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Checkbox, Modal, Space, Typography } from "antd";
 import { deleteKeyAction } from "@/app/actions";
+import { useIsMobile } from "@/app/components/use-is-mobile";
 
 /** Confirmation forte (case irréversible) de la suppression définitive d'une clé. */
 export function DeleteKeyDialog({
@@ -19,6 +20,7 @@ export function DeleteKeyDialog({
   status: string;
 }) {
   const [confirmed, setConfirmed] = useState(false);
+  const isMobile = useIsMobile();
 
   const close = () => {
     setConfirmed(false);
@@ -26,7 +28,7 @@ export function DeleteKeyDialog({
   };
 
   return (
-    <Modal title="Supprimer définitivement cette clé ?" open={open} onCancel={close} footer={null} destroyOnHidden>
+    <Modal title="Supprimer définitivement cette clé ?" open={open} onCancel={close} footer={null} destroyOnHidden width={isMobile ? "calc(100vw - 24px)" : 520}>
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Typography.Paragraph style={{ marginBottom: 0 }}>
           Clé <Typography.Text code>{fingerprint}</Typography.Text> — statut actuel : {status}.

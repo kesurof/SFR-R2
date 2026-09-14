@@ -96,7 +96,7 @@ export default async function AccessRequestPage() {
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
               <Text type="secondary">Votre identité Discord est associée automatiquement.</Text>
-              <PendingButton pendingLabel="Envoi…">Envoyer la demande</PendingButton>
+              <PendingButton pendingLabel="Envoi…" className="sfr-action">Envoyer la demande</PendingButton>
             </div>
           </form>
         </Card>

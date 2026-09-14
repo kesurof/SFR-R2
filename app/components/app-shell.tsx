@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Breadcrumb, Button, Grid, Layout, Menu, theme as antdTheme } from "antd";
+import { Breadcrumb, Button, Drawer, Layout, Menu, theme as antdTheme } from "antd";
 import { HomeOutlined, KeyOutlined, MenuOutlined, SettingOutlined, UserAddOutlined } from "@ant-design/icons";
 import { ThemeToggle } from "./theme-toggle";
 import { useThemeMode } from "./theme-provider";
+import { useIsMobile } from "./use-is-mobile";
 
 export type NavItem = { href: string; label: string; icon: IconName };
 type IconName = "home" | "sponsor" | "access" | "admin";
@@ -42,21 +43,15 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const screens = Grid.useBreakpoint();
-  const isMobile = !screens.lg;
+  const isMobile = useIsMobile();
   const { mode } = useThemeMode();
   const { token } = antdTheme.useToken();
-  // Dépliée par défaut sur grand écran, repliée sur mobile ; le breakpoint est
-  // attendu avant d'appliquer l'état pour ne pas replier au premier rendu.
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    if (screens.lg) setCollapsed(false);
-  }, [screens.lg]);
-
-  useEffect(() => {
-    if (screens.lg !== undefined && isMobile) setCollapsed(true);
-  }, [pathname, isMobile, screens.lg]);
+    setDrawerOpen(false);
+  }, [pathname]);
 
   const crumb = CRUMBS.find(([re]) => re.test(pathname))?.[1] ?? "";
 
@@ -76,49 +71,81 @@ export function AppShell({
     label: <Link href={item.href}>{item.label}</Link>,
   }));
 
+  const brand = (showText: boolean) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, minHeight: 64 }}>
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 9,
+          display: "grid",
+          placeItems: "center",
+          background: token.colorPrimary,
+          color: token.colorTextLightSolid,
+          fontWeight: 700,
+          flex: "none",
+        }}
+      >
+        S
+      </div>
+      {showText && (
+        <div style={{ lineHeight: 1.2 }}>
+          <div style={{ fontWeight: 700 }}>StreamFusion Reborn</div>
+          <div style={{ fontSize: 12, color: token.colorTextTertiary }}>Accès R2 privé</div>
+        </div>
+      )}
+    </div>
+  );
+
+  const navigation = (
+    <Menu
+      theme={mode}
+      mode="inline"
+      selectedKeys={selectedKeys}
+      items={menuItems}
+      style={{ borderInlineEnd: "none" }}
+      onClick={() => setDrawerOpen(false)}
+    />
+  );
+
+  const accountBlock = account ? (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: 16,
+        borderTop: `1px solid ${token.colorBorderSecondary}`,
+      }}
+    >
+      <span style={{ color: token.colorTextSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {account.name}
+      </span>
+      <form action={signOutAction}>
+        <Button type="link" htmlType="submit" style={{ padding: 0 }}>
+          Déconnexion
+        </Button>
+      </form>
+    </div>
+  ) : null;
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        breakpoint="lg"
-        collapsedWidth={isMobile ? 0 : 64}
-        collapsed={collapsed}
-        onCollapse={(value) => setCollapsed(value)}
-        trigger={null}
-        theme={mode}
-        width={248}
-        style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, minHeight: 64 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              display: "grid",
-              placeItems: "center",
-              background: token.colorPrimary,
-              color: token.colorTextLightSolid,
-              fontWeight: 700,
-              flex: "none",
-            }}
-          >
-            S
-          </div>
-          {!collapsed && (
-            <div style={{ lineHeight: 1.2 }}>
-              <div style={{ fontWeight: 700 }}>StreamFusion Reborn</div>
-              <div style={{ fontSize: 12, color: token.colorTextTertiary }}>Accès R2 privé</div>
-            </div>
-          )}
-        </div>
-        <Menu
+      {!isMobile && (
+        <Sider
+          collapsedWidth={64}
+          collapsed={collapsed}
+          onCollapse={(value) => setCollapsed(value)}
+          trigger={null}
           theme={mode}
-          mode="inline"
-          selectedKeys={selectedKeys}
-          items={menuItems}
-          style={{ borderInlineEnd: "none" }}
-        />
-      </Sider>
+          width={248}
+          style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
+        >
+          {brand(!collapsed)}
+          {navigation}
+        </Sider>
+      )}
 
       <Layout>
         <Header
@@ -126,7 +153,7 @@ export function AppShell({
             display: "flex",
             alignItems: "center",
             gap: 12,
-            padding: "0 16px",
+            padding: isMobile ? "0 12px" : "0 16px",
             background: token.colorBgContainer,
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
@@ -135,18 +162,24 @@ export function AppShell({
             type="text"
             icon={<MenuOutlined />}
             aria-label="Ouvrir la navigation"
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed((value) => !value)}
+            aria-expanded={isMobile ? drawerOpen : !collapsed}
+            onClick={() => (isMobile ? setDrawerOpen((value) => !value) : setCollapsed((value) => !value))}
           />
-          <Breadcrumb
-            items={[
-              { title: <Link href="/">Accueil</Link> },
-              ...(crumb && crumb !== "Accueil" ? [{ title: crumb }] : []),
-            ]}
-          />
+          {isMobile ? (
+            <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              StreamFusion Reborn
+            </span>
+          ) : (
+            <Breadcrumb
+              items={[
+                { title: <Link href="/">Accueil</Link> },
+                ...(crumb && crumb !== "Accueil" ? [{ title: crumb }] : []),
+              ]}
+            />
+          )}
           <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 12 }}>
             <ThemeToggle />
-            {account ? (
+            {account && !isMobile ? (
               <>
                 <span style={{ color: token.colorTextSecondary }}>{account.name}</span>
                 <form action={signOutAction}>
@@ -158,8 +191,23 @@ export function AppShell({
             ) : null}
           </div>
         </Header>
-        <Content style={{ padding: 24 }}>{children}</Content>
+        <Content style={{ padding: isMobile ? 12 : 24 }}>{children}</Content>
       </Layout>
+
+      {isMobile && (
+        <Drawer
+          placement="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          width={280}
+          closable={false}
+          styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
+        >
+          {brand(true)}
+          <div style={{ flex: 1, overflowY: "auto" }}>{navigation}</div>
+          {accountBlock}
+        </Drawer>
+      )}
     </Layout>
   );
 }

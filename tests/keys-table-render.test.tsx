@@ -9,6 +9,7 @@ vi.mock("@/app/actions", () => ({
   replaceKeyByIdAction: vi.fn(),
   rejectKeyReplacementAction: vi.fn(),
   revoke: vi.fn(),
+  deleteKeyAction: vi.fn(),
 }));
 
 const baseRow: KeyRow = {
@@ -48,6 +49,7 @@ describe("KeysTable", () => {
     expect(screen.getByText("Remplace la clé old1••••••••old2")).toBeTruthy();
     expect(screen.getByText("Remplacer")).toBeTruthy();
     expect(screen.getByText("Révoquer")).toBeTruthy();
+    expect(screen.getByText("Supprimer")).toBeTruthy();
   });
 
   it("affiche encore l'action sur une demande en attente de la clé ciblée", () => {
@@ -73,6 +75,8 @@ describe("KeysTable", () => {
     expect(screen.getByText("À traiter")).toBeTruthy();
     expect(screen.getByText("Remplacer la clé")).toBeTruthy();
     expect(screen.queryByText("Remplacer")).toBeNull();
+    expect(screen.getByText("Révoquer")).toBeTruthy();
+    expect(screen.getByText("Supprimer")).toBeTruthy();
   });
 
   it("propose de renouveler une clé révoquée sans action de révocation", () => {
@@ -90,6 +94,7 @@ describe("KeysTable", () => {
     );
 
     expect(screen.getByText("Remplacer")).toBeTruthy();
+    expect(screen.getByText("Supprimer")).toBeTruthy();
     expect(screen.queryByText("Révoquer")).toBeNull();
   });
 });

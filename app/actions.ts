@@ -8,7 +8,7 @@ import { decideRequest, issueClaim, revokeKey, saveKey, submitRequest } from "@/
 import { discardPendingNotifications, queueNotification, wakeNotificationWorker } from "@/lib/discord-notifications";
 import { getNotificationSettings, parseNotificationSettingsInput } from "@/lib/settings";
 import { decideAccessRequest, saveAccessRequestKey, submitAccessRequest } from "@/lib/access-request-workflow";
-import { rejectKeyReplacement, replaceKey, replaceKeyById, requestKeyReplacement } from "@/lib/key-replacement-workflow";
+import { deleteAccessKey, rejectKeyReplacement, replaceKey, replaceKeyById, requestKeyReplacement } from "@/lib/key-replacement-workflow";
 import { restoreManualAccess } from "@/lib/manual-access-workflow";
 import {
   accessRequestDecisionSchema,
@@ -113,6 +113,16 @@ export const revoke = formAction(
     adminRedirect("key_revoked", "keys");
   }),
   () => adminNoticeUrl("key_revoke_error", "keys"),
+);
+
+export const deleteKeyAction = formAction(
+  adminAction.inputSchema(keyIdSchema).action(async ({ parsedInput, ctx }) => {
+    await deleteAccessKey(parsedInput.keyId, ctx.actor.discordId);
+    revalidatePath("/admin");
+    revalidatePath("/mon-acces");
+    adminRedirect("key_deleted", "keys");
+  }),
+  () => adminNoticeUrl("key_delete_error", "keys"),
 );
 
 export const requestKeyReplacementAction = formAction(

@@ -230,3 +230,61 @@ export async function rejectKeyReplacement(requestId: string, comment: string, a
     message: `Votre demande de remplacement de clé a été refusée. Motif : ${comment.trim()}`,
   });
 }
+
+/**
+ * Suppression définitive d'une clé depuis l'administration. Une clé active est
+ * d'abord révoquée (audit + notification comme une révocation), puis la clé est
+ * supprimée avec les demandes de remplacement et jetons de récupération qui la
+ * référencent. Un instantané est conservé dans l'audit `ACCESS_KEY_DELETED`.
+ */
+export async function deleteAccessKey(keyId: string, actorDiscordId: string) {
+  const result = await prisma.$transaction(async (tx) => {
+    const key = await tx.accessKey.findUnique({ where: { id: keyId }, include: { user: true } });
+    if (!key) throw new Error("Cette clé est introuvable.");
+
+    if (key.status === "ACTIVE") {
+      const revoked = await tx.accessKey.updateMany({
+        where: { id: keyId, status: "ACTIVE" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+      if (revoked.count !== 1) throw new Error("Cette clé n’est plus active.");
+    }
+
+    const linkedRequests = await tx.keyReplacementRequest.findMany({
+      where: { OR: [{ currentKeyId: keyId }, { newKeyId: keyId }] },
+      select: { id: true },
+    });
+    const linkedRequestIds = linkedRequests.map((request) => request.id);
+    if (linkedRequestIds.length) {
+      await tx.keyReplacementRequest.deleteMany({ where: { id: { in: linkedRequestIds } } });
+    }
+    await tx.claimToken.deleteMany({ where: { keyId } });
+    await tx.accessKey.delete({ where: { id: keyId } });
+    await tx.auditLog.create({
+      data: {
+        event: "ACCESS_KEY_DELETED",
+        actorDiscordId,
+        targetDiscordId: key.user.discordId,
+        keyId,
+        metadata: JSON.stringify({
+          fingerprint: accessKeyFingerprint(key.prefix, key.suffix),
+          previousStatus: key.status,
+          wasActive: key.status === "ACTIVE",
+          linkedReplacementRequestIds: linkedRequestIds,
+        }),
+      },
+    });
+    return { wasActive: key.status === "ACTIVE", user: key.user };
+  });
+
+  if (result.wasActive) {
+    await queueNotification({
+      type: "KEY_REVOKED",
+      targetId: result.user.discordId,
+      keyId,
+      dedupeKey: `key-revoked:${keyId}`,
+      message: "Votre clé d’accès a été révoquée. Contactez l’équipe.",
+    });
+  }
+  return result;
+}

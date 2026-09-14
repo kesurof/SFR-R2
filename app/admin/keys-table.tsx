@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input, Space, Table, Tag, Typography, type TableColumnsType } from "antd";
-import { replaceKeyAction, rejectKeyReplacementAction, revoke } from "@/app/actions";
+import { deleteKeyAction, replaceKeyAction, rejectKeyReplacementAction, revoke } from "@/app/actions";
 import { ConfirmSubmit } from "@/app/components/confirm-submit";
 import { PendingButton } from "@/app/components/pending-button";
 import { RejectDialog } from "@/app/admin/reject-dialog";
@@ -103,28 +103,33 @@ export function KeysTable({ rows }: { rows: KeyRow[] }) {
       key: "actions",
       align: "right",
       fixed: "right",
-      width: 200,
+      width: 260,
       render: (_, row) => {
-        if (row.status === "REVOKED") {
-          return (
-            <Space size={4} wrap>
-              <ReplaceKeyDialog keyId={row.id} />
-            </Space>
-          );
-        }
-        if (row.status !== "ACTIVE") return <Typography.Text type="secondary">—</Typography.Text>;
         const pendingReplacement = row.replacementRequest?.status === "PENDING" && !row.replacementRequest.isResult;
+        const replaceable = (row.status === "ACTIVE" || row.status === "REVOKED") && !pendingReplacement;
         return (
           <Space size={4} wrap>
-            {!pendingReplacement && <ReplaceKeyDialog keyId={row.id} />}
-            <form action={revoke}>
+            {replaceable && <ReplaceKeyDialog keyId={row.id} />}
+            {row.status === "ACTIVE" && (
+              <form action={revoke}>
+                <input type="hidden" name="keyId" value={row.id} />
+                <ConfirmSubmit
+                  title="Révoquer cette clé ?"
+                  message="Le membre perdra immédiatement l'accès au stockage R2. Une nouvelle clé devra être émise."
+                  confirmLabel="Révoquer"
+                >
+                  Révoquer
+                </ConfirmSubmit>
+              </form>
+            )}
+            <form action={deleteKeyAction}>
               <input type="hidden" name="keyId" value={row.id} />
               <ConfirmSubmit
-                title="Révoquer cette clé ?"
-                message="Le membre perdra immédiatement l'accès au stockage R2. Une nouvelle clé devra être émise."
-                confirmLabel="Révoquer"
+                title="Supprimer définitivement cette clé ?"
+                message="La clé sera supprimée de la base. Si elle est active, elle sera d'abord révoquée. L'historique de remplacement et les liens de récupération liés seront supprimés. Action irréversible."
+                confirmLabel="Supprimer"
               >
-                Révoquer
+                Supprimer
               </ConfirmSubmit>
             </form>
           </Space>

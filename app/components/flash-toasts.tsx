@@ -14,6 +14,8 @@ const NOTICES: Record<string, [NoticeType, string, string]> = {
   request_deleted: ["success", "Demande supprimée", ""],
   key_saved: ["success", "Clé enregistrée", "Elle est disponible pour le filleul."],
   key_revoked: ["success", "Clé révoquée", "Le membre a perdu l'accès au stockage R2."],
+  key_deleted: ["success", "Clé supprimée", "La clé a été supprimée définitivement."],
+  key_delete_error: ["error", "Action impossible", "Impossible de supprimer cette clé."],
   sponsor_granted: ["success", "Droit de parrainage accordé", ""],
   sponsor_revoked: ["success", "Droit de parrainage retiré", ""],
   members_synced: ["success", "Synchronisation terminée", "Les membres Discord sont à jour."],
